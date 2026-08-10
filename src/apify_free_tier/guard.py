@@ -104,6 +104,9 @@ class FreeTierGuard:
         return self._active
 
     async def _configure(self) -> None:
+        if os.getenv("FREE_TIER_DEBUG") == "1":
+            _log_environment()
+
         # Off-platform (local dev, CI) there is no user and nothing to protect.
         if not Actor.is_at_home():
             return
@@ -142,8 +145,12 @@ class FreeTierGuard:
         # mid-run.
         self._prices = _read_event_prices()
         if not self._prices:
-            # Not pay-per-event: nothing this run does costs the owner anything
-            # we can attribute, so there is nothing to meter.
+            # Nothing to meter: either the Actor is not pay-per-event, or the
+            # platform reported no prices for this run (which is what happens
+            # when the Actor's own owner starts it - owner runs are not
+            # charged). Say so: FREE_MAX being set means someone expected
+            # tracking, and a silent no-op here is impossible to debug.
+            Actor.log.info(messages.no_prices())
             return
 
         self._db = UsageDB(url, key)
@@ -294,6 +301,33 @@ class FreeTierGuard:
 
 
 # --------------------------------------------------------------------- helpers
+
+
+def _log_environment() -> None:
+    """FREE_TIER_DEBUG=1. Reports what the guard can see, never a secret value.
+
+    Rolling this out across a fleet means diagnosing "why is it inert?" over and
+    over, and the answer is almost always a missing variable or an empty price
+    map. Presence and shape are enough to tell which.
+    """
+    seen = {
+        name: ("set" if os.getenv(name) else "MISSING")
+        for name in ("APIFY_USER_ID", "APIFY_ACTOR_ID", "APIFY_USER_IS_PAYING",
+                     "FREE_MAX", "SUPABASE_URL", "SUPABASE_KEY")
+    }
+    seen["APIFY_USER_IS_PAYING"] = os.getenv("APIFY_USER_IS_PAYING") or "MISSING"
+    seen["FREE_MAX"] = os.getenv("FREE_MAX") or "MISSING"  # not a secret in practice
+    Actor.log.info(f"[free-tier debug] env: {seen}")
+    Actor.log.info(f"[free-tier debug] is_at_home={Actor.is_at_home()} sdk={_sdk_version()}")
+    try:
+        info = Actor.get_charging_manager().get_pricing_info()
+        Actor.log.info(
+            f"[free-tier debug] is_pay_per_event="
+            f"{getattr(info, 'is_pay_per_event', None)} "
+            f"per_event_prices={getattr(info, 'per_event_prices', None)}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        Actor.log.info(f"[free-tier debug] pricing read failed: {type(exc).__name__}: {exc}")
 
 
 def _decimal_or_none(raw: str | None) -> Decimal | None:

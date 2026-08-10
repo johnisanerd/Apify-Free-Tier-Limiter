@@ -56,6 +56,15 @@ def sdk_too_old(found: str) -> str:
     )
 
 
+def no_prices() -> str:
+    """FREE_MAX was set, so somebody expected tracking. Never fail this silently."""
+    return (
+        "Free-tier usage tracking is configured, but this run reports no "
+        "pay-per-event prices, so there is nothing to meter. This is expected "
+        "when the Actor's owner starts the run, since owner runs are not charged."
+    )
+
+
 def unpriced_event(event_name: str, known: list[str]) -> str:
     return (
         f"No readable price for the '{event_name}' event "
