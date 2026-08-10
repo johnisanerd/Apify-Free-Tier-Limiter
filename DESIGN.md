@@ -63,54 +63,59 @@ email-signup/bonus customers too.
 | `FREE_MAX` (dollars) | custom env var, set per Actor |
 | `SUPABASE_URL` / `SUPABASE_KEY` | per-Actor secret env vars |
 
-## Function design
+## Function design (built)
 
-A tiny class so each Actor integrates in ~3 lines:
+The notes' Initiate / Check / Increment, wrapped so an Actor integrates in ~3 lines.
+See the README for the full API; the shape is:
 
 ```python
-from apify_free_tier import FreeTierGuard
-
-guard = FreeTierGuard.from_env()   # reads the vars above
-await guard.start()                # gate: if free AND already >= FREE_MAX -> log + graceful exit
-
-# ...inside the charge/delivery loop, each time we charge:
-await guard.charge(amount)         # atomic increment; if now >= FREE_MAX -> log + graceful shutdown
+guard = await FreeTierGuard.start()      # Initiate: read vars, read usage, gate
+if guard.blocked:
+    return
+...
+if await guard.charge(event, n):         # Check + Increment, every charge round
+    break
+await guard.close()                      # settle the ledger
 ```
 
-Underlying pieces (maps to the notes' Initiate / Check / Increment):
+1. **free vs paid** — `APIFY_USER_IS_PAYING != "1"`. No DB call.
+2. **`get_usage(user, actor)`** — one read at start; period is server-side.
+3. **`increment_usage(user, actor, amount)`** — atomic RPC, returns the new total.
+4. **orchestrator** — accumulates locally, flushes in the background, enforces on
+   `known_total + pending` so the hot path never blocks.
 
-1. **`is_free_user()`** — `APIFY_USER_IS_PAYING != "1"`. No DB. If paid, the guard is a no-op.
-2. **`get_usage(user, actor, period)`** — Supabase read of this month's consumption.
-3. **`increment_usage(amount)`** — atomic RPC; returns the new total.
-4. **orchestrator** — `start()` / `charge()` / `shutdown()` tie them together and enforce every round.
+## Supabase schema (live)
 
-## Supabase schema (draft)
+Project `apify-free-tier` (`jsyorfqzwkysaaqtdgwp`, us-east-1). Migration:
+`migrations/0001_free_tier_usage.sql`. One counter row per user × actor × month,
+RLS on with zero policies, the two `SECURITY DEFINER` RPCs as the only surface.
 
-One row per user × actor × month:
+## Resolved during the build
 
-```
-usage (
-  user_id   text,
-  actor_id  text,
-  period    text,        -- "2026-08"
-  spent_usd numeric,     -- accumulated subsidized spend
-  updated_at timestamptz,
-  primary key (user_id, actor_id, period)
-)
-```
+- **Amount** = the tier-resolved per-event price from `get_pricing_info()`, not the
+  base price in `actor.json`. Verified on-platform: the pilot's `actor_returned` bills
+  at `$0.0000121`, not the `$0.00001` list price.
+- **Apify env vars are baked into the build image.** Changing `FREE_MAX` requires a
+  rebuild. Cost us a confusing silent-inert run before we caught it.
+- **`FREE_MAX` must not be a secret env var.** Apify redacts secret values in logs, so
+  the user-facing message rendered as `$*********`. Set it as a plain variable;
+  `SUPABASE_KEY` stays secret. _(Supersedes the original "FREE_MAX as a secret" call.)_
+- **Silence is a bug.** An Actor with `FREE_MAX` set has opted in, so every inert path
+  now explains itself, and `FREE_TIER_DEBUG=1` dumps variable presence and the price map.
+- **Overshoot is bounded by one charge call**, so batch-charging Actors can exceed
+  `FREE_MAX` by up to a batch.
 
-Atomic increment via an RPC (`increment_usage(user_id, actor_id, period, amount)`)
-that upserts and returns the new `spent_usd` in a single call.
+## Verified on-platform (pilot: `johnvc/store-actor-intelligence-api`)
 
-## Open questions
-
-_(to fill in as we discuss)_
-
-1. Where does `charge(amount)` get the dollar amount — mirror the exact `Actor.charge()`
-   PPE amount, or a compute estimate? (Needs a source of truth so the cap means real dollars.)
-2. Which Supabase key/policy — locked-down RLS + RPC-only, since the key rides in each
-   Actor's env?
-3. Async vs sync API (Apify Python SDK is async)?
+| Check | Result |
+| --- | --- |
+| Paid user | 5 items, zero Supabase calls, no free-tier logging |
+| Free user (forced) | Ledger row written, amount matches tier price to the cent |
+| Mid-run cutoff | Stopped at the crossing charge, partial results kept, run SUCCEEDED |
+| Blocked at start | 0 items, no scraping, upgrade message shown |
+| Supabase unreachable | `ConnectError` → warn → run completed with 5 items |
+| Month isolation | A $9.999999 July row ignored by August's read |
+| Startup read latency | ~33 ms median (us-east-1) |
 
 ---
 

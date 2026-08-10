@@ -96,6 +96,17 @@ values as secret.
 | `SUPABASE_URL` | with `FREE_MAX` | Usage-ledger project URL. |
 | `SUPABASE_KEY` | with `FREE_MAX` | Publishable/anon key. It can only execute the two RPCs. |
 | `FREE_TIER_FORCE` | no | `1` treats every caller as free. For verifying the free path from a paid account. Remove afterwards. |
+| `FREE_TIER_DEBUG` | no | `1` logs which variables are visible and the price map the guard resolved. Never prints a secret value. The fastest way to answer "why is it inert?" |
+
+Two things about Apify env vars, both learned the hard way on the pilot:
+
+- **A new or changed variable does not reach the Actor until you rebuild.** They are
+  captured into the build image, not injected per run. Change `FREE_MAX`, then rebuild,
+  or the run keeps using the old value with no indication anything is stale.
+- **Do not mark `FREE_MAX` secret.** Apify redacts secret values in logs, so the message
+  the user reads becomes `You've used this Actor's full free monthly allowance
+  ($*********)`. It is a policy number, not a credential. `SUPABASE_KEY` is the one that
+  should be secret.
 
 `APIFY_USER_ID`, `APIFY_ACTOR_ID`, and `APIFY_USER_IS_PAYING` are supplied by the
 platform. `APIFY_USER_ID` is the user who *started* the run, not the Actor's owner.
@@ -121,6 +132,14 @@ loss-leader Actor.
 Known limitation: enforcement is per Apify account, so someone can reset their allowance
 by using a different free account. That is understood and priced in; it also means a bot
 swarm has to burn 5–10× more accounts to keep going.
+
+## How far past the cap a run can get
+
+The guard stops at the first charge that crosses `FREE_MAX`, so the overshoot is one
+charge — whatever the Actor charges in one call. An Actor that charges per item
+overshoots by one item; one that charges per batch of 25 can overshoot by 25. Worth
+knowing when you pick `FREE_MAX`, and a reason to prefer per-item charging on Actors
+where a batch is expensive.
 
 ## What the user sees
 
