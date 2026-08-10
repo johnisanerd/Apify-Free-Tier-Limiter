@@ -94,6 +94,26 @@ async def test_stops_mid_run_when_the_cap_is_crossed(actor, db, free_env):
     assert any("full free monthly allowance" in m for m in actor.log.warnings)
 
 
+async def test_exhausted_flag_lets_the_actor_keep_the_right_status_message(actor, db, free_env):
+    """Actors set their own terminal status on the way out; this is how they
+    know not to overwrite the guard's explanation."""
+    guard = await FreeTierGuard.start()
+    assert guard.exhausted is False
+
+    for _ in range(5):
+        await guard.charge("item_returned", 1)
+
+    assert guard.exhausted is True
+
+
+async def test_exhausted_is_true_when_blocked_at_start(actor, db, free_env):
+    db.total = Decimal("0.05")
+
+    guard = await FreeTierGuard.start()
+
+    assert guard.exhausted is True
+
+
 async def test_counts_multi_unit_charges(actor, db, free_env):
     guard = await FreeTierGuard.start()
 

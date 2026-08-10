@@ -38,7 +38,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.0.tar.gz" }
+apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.1.tar.gz" }
 ```
 
 Then re-lock so the Docker build picks it up:
@@ -70,7 +70,20 @@ async def main() -> None:
                     break
         finally:
             await guard.close()   # final flush
+
+        # These Actors set their own terminal status on the way out. Don't
+        # overwrite the guard's explanation of why the run stopped.
+        if not guard.exhausted:
+            await Actor.set_status_message(f"Done. {n} rows.", is_terminal=True)
 ```
+
+### Guard state
+
+| Property | Meaning |
+| --- | --- |
+| `guard.blocked` | Already over the cap before any work began. Return immediately. |
+| `guard.exhausted` | The cap ended this run, at start *or* mid-run. Check before setting your own terminal status message. |
+| `guard.tracking` | This run is actually being counted. Useful in logs and tests. |
 
 ## Configuration
 

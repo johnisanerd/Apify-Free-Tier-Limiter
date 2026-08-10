@@ -50,6 +50,7 @@ class FreeTierGuard:
     def __init__(self) -> None:
         self._active = False          # tracking on? False = inert passthrough
         self._blocked = False         # already over the cap before any work began
+        self._exhausted = False       # the cap ended this run, at start or mid-run
         self._free_max = _ZERO
         self._known_total = _ZERO     # last authoritative total from the database
         self._pending = _ZERO         # charged locally, not yet flushed
@@ -82,6 +83,20 @@ class FreeTierGuard:
         and set as the run's terminal status message.
         """
         return self._blocked
+
+    @property
+    def exhausted(self) -> bool:
+        """True once the cap has ended this run, whether at start or mid-run.
+
+        Actors in this fleet set their own terminal status message on the way
+        out, which would overwrite the guard's. Check this before doing that:
+
+            if guard.exhausted:
+                pass                      # the guard already said why
+            else:
+                await Actor.set_status_message(f"Done. {n} rows.", is_terminal=True)
+        """
+        return self._exhausted
 
     @property
     def tracking(self) -> bool:
@@ -255,6 +270,7 @@ class FreeTierGuard:
         await self._deactivate()
 
     async def _announce_exhausted(self) -> None:
+        self._exhausted = True
         message = messages.exhausted(self._free_max)
         Actor.log.warning(message)
         try:
