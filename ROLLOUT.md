@@ -21,13 +21,17 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (3 of 102 Actors, as of 2026-08-11)
+## Enabled (7 of 103 Actors, as of 2026-08-11)
 
-| Actor | Actor ID | FREE_MAX | Status |
-| --- | --- | --- | --- |
-| `johnvc/store-actor-intelligence-api` | `WzsyD0afch5fKHGn5` | $1.00 | OK |
-| `johnvc/google-images-api` | `bvAQMqCbp6wE53JzK` | $1.00 | OK |
-| `johnvc/YoutubeTranscripts` | `zPumutvB61fpEsglh` | $1.00 | OK |
+| Actor | Actor ID | FREE_MAX | Library | Status |
+| --- | --- | --- | --- | --- |
+| `johnvc/store-actor-intelligence-api` | `WzsyD0afch5fKHGn5` | $1.00 | v0.1.3 | OK |
+| `johnvc/google-images-api` | `bvAQMqCbp6wE53JzK` | $1.00 | v0.1.3 | OK |
+| `johnvc/YoutubeTranscripts` | `zPumutvB61fpEsglh` | $1.00 | v0.1.3 | OK |
+| `johnvc/google-maps-places-api` | `WQbrHYgrJV5fP6b09` | $2.00 | v0.1.4 | OK |
+| `johnvc/google-news-lite-api` | `Sl7mQJeH9MvLhgGYy` | $2.00 | v0.1.4 | OK |
+| `johnvc/google-shopping-lite-api` | `YrCMNywfEbYqWpgdF` | $2.00 | v0.1.4 | OK |
+| `johnvc/google-scholar-lite-api` | `ChRMxpDtEqlJHZDga` | $2.00 | v0.1.4 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -35,56 +39,34 @@ matches the tier-resolved price.
 
 ## What each one taught us
 
-Every install so far has hit a different integration shape, which is worth knowing
-before picking the next one.
+Seven installs, seven different charge shapes. Check the shape before you start.
 
 **`store-actor-intelligence-api`** (pilot) — the common fleet shape: a local
-`_charge(event, count) -> bool` helper, batch charging after `push_data`. The swap is
-one line. Because it charges per *batch*, a free user can overshoot the cap by up to a
-whole batch.
+`_charge(event, count) -> bool` helper, batch charging after `push_data`. One-line swap.
 
-**`google-images-api`** — same charge shape, per item. The trap was the **Dockerfile**:
-it installs from `requirements.txt`, so editing `pyproject.toml` and running `uv lock`
-changed nothing the image saw. The build succeeded, reused a cached layer with no
-library in it, and the Actor logged nothing at runtime. Fix: regenerate with
-`uv export --no-hashes --format requirements-txt > requirements.txt`.
+**`google-images-api`** — same shape, per item. The trap was the **Dockerfile**: it
+installs from `requirements.txt`, so editing `pyproject.toml` and running `uv lock`
+changed nothing the image saw. The build succeeded on a cached layer with no library in
+it, and the Actor logged nothing.
 
-**`YoutubeTranscripts`** — no loop to break. Every video is launched at once with
-`asyncio.gather` and queues on a semaphore, so stopping needs a shared `asyncio.Event`
-checked *after* a task acquires the semaphore. Checking at the top of the worker looks
-right and never fires: `gather` starts every coroutine immediately, so all of them would
-check before anything was charged. It also has two versions (0.0 and 0.5) both tagged
-`latest`; **0.0** is the one that builds.
+**`YoutubeTranscripts`** — no loop to break. Every video launches at once via
+`asyncio.gather` and queues on a semaphore, so stopping needs an `asyncio.Event` checked
+*after* a task acquires the semaphore. Two versions both tagged `latest`; **0.0** builds.
 
-## Live usage
+**`google-maps-places-api`**, **`google-scholar-lite-api`** — inline `Actor.charge` with
+no helper, per item. Straightforward.
 
-Real external free accounts, current month (2026-08-11, ~14 hours after the first
-install):
+**`google-news-lite-api`** — its `_charge` returned `None` and deliberately never stopped
+the run, on the reasoning that the platform's charge limit should not truncate output.
+The free-tier cap is a different question, so the article loop now breaks and a flag
+carries that out of the enclosing term loop.
 
-| Actor | Free users | Total metered | Capped out | Charges |
-| --- | --- | --- | --- | --- |
-| `google-images-api` | 15 | $1.5363 | **1** | 14,989 |
-| `YoutubeTranscripts` | 31 | $0.0103 | 0 | 842 |
-| `store-actor-intelligence-api` | 2 | $0.0009 | 0 | 6 |
-
-**The cap has fired once, in production.** A `google-images-api` user reached $1.00 in
-2.8 hours (~$0.35/hour, 9,764 charges) and has recorded nothing in the 7.7 hours since,
-while other users on the same Actor kept going. Had they continued at their own rate,
-that would have been roughly $2.70 more of subsidised compute today, on one user.
-
-Query it directly:
-
-```sql
-select actor_id, count(*) as free_users, round(sum(spent_usd), 6) as total_spent,
-       round(max(spent_usd), 6) as heaviest_user, sum(charge_count) as charges
-from free_tier_usage
-where period = to_char(now() at time zone 'utc', 'YYYY-MM')
-group by actor_id order by total_spent desc;
-```
-
-One `google-images-api` user reached roughly **47% of a $1 monthly allowance within an
-hour** of the cap going live — the case this exists for. Worth watching before choosing
-`FREE_MAX` elsewhere.
+**`google-shopping-lite-api`** — charges *before* storing and slices the batch to the
+billed count. `charge()` returns a bool, so adopting it would have meant either billing
+twice or losing that count. This is why `record()` exists: the Actor keeps its own
+`_charge` call and meters the billed number. `allowance_spent` is kept separate from the
+existing `charge_limit_hit`, whose message ("storing more would be unbilled") is the
+wrong explanation for a free user who simply used up the month.
 
 ## Choosing the next Actors
 

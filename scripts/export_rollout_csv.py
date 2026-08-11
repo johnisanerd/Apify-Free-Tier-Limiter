@@ -63,6 +63,42 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "uv.lock",
         "notes": "Fully parallel via asyncio.gather; stopping needs an Event checked after the semaphore. Versions 0.0 and 0.5 both tagged latest; 0.0 builds.",
     },
+    "WQbrHYgrJV5fP6b09": {
+        "github_repo": "johnisanerd/ApifyGoogleMaps",
+        "local_path": "~/Github/ApifyGoogleMaps/ApifyGoogleMaps",
+        "installed_utc": "2026-08-11",
+        "charge_event": "place",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Inline Actor.charge, same shape as google-images.",
+    },
+    "Sl7mQJeH9MvLhgGYy": {
+        "github_repo": "johnisanerd/ApifyGoogleNewsLite",
+        "local_path": "~/Github/ApifyGoogleNewsLite/ApifyGoogleNewsLite",
+        "installed_utc": "2026-08-11",
+        "charge_event": "article_processed",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Its _charge returned None and never stopped the run; the cap does stop, and a flag carries that out of the nested term loop.",
+    },
+    "YrCMNywfEbYqWpgdF": {
+        "github_repo": "johnisanerd/ApifyGoogleShoppingLite",
+        "local_path": "~/Github/ApifyGoogleShoppingLite/ApifyGoogleShoppingLite",
+        "installed_utc": "2026-08-11",
+        "charge_event": "product",
+        "charge_granularity": "per batch",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Charges before storing and slices to the billed count, so it keeps its own _charge and meters with guard.record(). First user of record().",
+    },
+    "ChRMxpDtEqlJHZDga": {
+        "github_repo": "johnisanerd/ApifyGoogleScholarLite",
+        "local_path": "~/Github/ApifyGoogleScholarLite/ApifyGoogleScholarLite",
+        "installed_utc": "2026-08-11",
+        "charge_event": "paper",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Inline Actor.charge. maxResultsPerSearch has a schema minimum of 10.",
+    },
 }
 
 COLUMNS = [
