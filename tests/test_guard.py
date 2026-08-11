@@ -310,7 +310,7 @@ async def test_the_reason_reaches_the_dataset_not_just_the_log(actor, db, free_e
     for _ in range(5):
         await guard.charge("item_returned", 1)
 
-    notice = [row for row in actor.pushed if row.get("result_type") == "free_tier_limit_reached"]
+    notice = [row for row in actor.pushed if row.get("free_tier_notice")]
     assert len(notice) == 1
     assert "upgrade to a paid Apify account" in notice[0]["message"]
     assert notice[0]["free_allowance_usd"] == 0.05
@@ -323,7 +323,7 @@ async def test_blocked_at_start_still_explains_itself_in_the_dataset(actor, db, 
 
     await FreeTierGuard.start()
 
-    notice = [row for row in actor.pushed if row.get("result_type") == "free_tier_limit_reached"]
+    notice = [row for row in actor.pushed if row.get("free_tier_notice")]
     assert len(notice) == 1
     assert "no results" in notice[0]["message"]
 

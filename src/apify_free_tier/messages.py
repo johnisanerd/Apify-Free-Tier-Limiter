@@ -59,10 +59,12 @@ def notice_row(free_max: Decimal, spent: Decimal, resets_on: str, rows_returned:
         "This run returned no results because the allowance was already used up."
     )
     return {
-        # Both spellings: the fleet is split between result_type and resultType,
-        # and this row should be recognisable whichever one a consumer filters on.
-        "result_type": "free_tier_limit_reached",
-        "resultType": "free_tier_limit_reached",
+        # Deliberately NOT result_type / resultType. Those look like the natural
+        # home for this, but several Actors declare them in their dataset schema
+        # with an enum of that Actor's own row kinds, and a foreign value gets
+        # the whole push rejected. These key names collide with nothing.
+        "free_tier_notice": True,
+        "notice": "free_tier_limit_reached",
         "message": (
             f"Free monthly allowance reached for this Actor. {got} "
             f"Free Apify accounts get {money(free_max)} of usage on this Actor per calendar "
@@ -76,7 +78,17 @@ def notice_row(free_max: Decimal, spent: Decimal, resets_on: str, rows_returned:
         "used_this_month_usd": float(spent),
         "allowance_resets_on": resets_on,
         "how_to_continue": "Upgrade to a paid Apify account (never limited), or wait for the monthly reset.",
-        "is_error": False,
+    }
+
+
+def minimal_notice_row(free_max: Decimal, resets_on: str) -> dict:
+    """Fallback when the full row is rejected: two fields, nothing to trip over."""
+    return {
+        "free_tier_notice": True,
+        "message": (
+            f"Free monthly allowance ({money(free_max)}) reached for this Actor. Upgrade to a "
+            f"paid Apify account to continue, or wait for the reset on {resets_on}."
+        ),
     }
 
 
@@ -90,7 +102,7 @@ def tracking_unavailable(reason: str) -> str:
 
 def sdk_too_old(found: str) -> str:
     return (
-        f"Free-tier usage tracking needs the Apify SDK 3.0 or newer to read event "
+        f"Free-tier usage tracking needs an Apify SDK that can report event prices to read event "
         f"prices (found {found}); continuing without it."
     )
 

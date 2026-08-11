@@ -333,11 +333,22 @@ class FreeTierGuard:
         """
         if os.getenv("FREE_TIER_NOTICE_ROW") == "0":
             return
+        spent = self._known_total + self._pending
         try:
             await Actor.push_data(messages.notice_row(
-                self._free_max, self._known_total + self._pending,
-                _next_reset(), self._charged_rows or None,
+                self._free_max, spent, _next_reset(), self._charged_rows or None,
             ))
+            return
+        except Exception as exc:  # noqa: BLE001
+            # Usually the Actor's dataset schema objecting to a field. Retry with
+            # the two-field version before giving up; getting *some* explanation
+            # into the data matters more than the detail.
+            Actor.log.warning(
+                f"Free-tier notice rejected by the dataset ({type(exc).__name__}: "
+                f"{str(exc)[:120]}); retrying with a minimal row."
+            )
+        try:
+            await Actor.push_data(messages.minimal_notice_row(self._free_max, _next_reset()))
         except Exception as exc:  # noqa: BLE001
             Actor.log.warning(
                 f"Could not add the free-tier notice to the dataset ({type(exc).__name__}); "

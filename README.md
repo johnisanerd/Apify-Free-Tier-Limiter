@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.6.tar.gz" }
+apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.7.tar.gz" }
 ```
 
 Then re-lock so the Docker build picks it up:
@@ -195,8 +195,7 @@ Actor that returned nothing and said nothing.
 
 ```json
 {
-  "result_type": "free_tier_limit_reached",
-  "resultType": "free_tier_limit_reached",
+    "resultType": "free_tier_limit_reached",
   "message": "Free monthly allowance reached for this Actor. This run returned 25 result(s) before stopping. Free Apify accounts get $2.00 of usage on this Actor per calendar month, and this account has now used $2.01. Nothing is wrong with the Actor or your input. To continue: upgrade to a paid Apify account, which is never limited by this cap ...",
   "free_allowance_usd": 2.0,
   "used_this_month_usd": 2.01,
@@ -206,8 +205,11 @@ Actor that returned nothing and said nothing.
 }
 ```
 
-Both `result_type` and `resultType` are set because the fleet is split between the two
-spellings, and the row should be recognisable whichever one a consumer filters on.
+The keys are deliberately **not** `result_type` / `resultType`. Those look like the
+natural home for this, but several Actors declare them in their dataset schema with an
+enum of that Actor's own row kinds, and a foreign value gets the whole push rejected —
+which is exactly what happened on the pilot. If the full row is still rejected, the guard
+retries with a two-field version before giving up.
 
 Set `FREE_TIER_NOTICE_ROW=0` on an Actor whose output schema will not accept the extra
 row. The push is guarded regardless: if it fails, the run continues and the reason is
