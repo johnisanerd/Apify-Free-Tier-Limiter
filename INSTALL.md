@@ -25,12 +25,36 @@ dependencies = [
 apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.3.tar.gz" }
 ```
 
-Then re-lock, or the Docker build will not see it (the image installs from `uv.lock`,
-not from `pyproject.toml`):
+Then re-lock:
 
 ```bash
 uv lock
 ```
+
+### Check which file your Dockerfile installs from
+
+**This is where an install silently does nothing.** The fleet has two Dockerfile styles,
+and `pyproject.toml` alone reaches neither of them.
+
+```bash
+grep -E "COPY (requirements.txt|pyproject.toml)" Dockerfile
+```
+
+- **`COPY requirements.txt`** (older Actors, plain `pip install -r requirements.txt`) —
+  `uv lock` is not enough. Regenerate the snapshot the image actually installs:
+
+  ```bash
+  uv export --no-hashes --format requirements-txt > requirements.txt
+  ```
+
+  Check the diff: it should add the `apify-free-tier @ https://...` line and change no
+  existing pin.
+
+- **`COPY pyproject.toml uv.lock`** (newer Actors, `uv export | uv pip install`) —
+  `uv lock` is all you need.
+
+Get this wrong and the build still succeeds, reusing a cached layer without the library,
+and the Actor logs nothing at all at runtime.
 
 ## 2. Wire it into `main.py`
 
@@ -154,7 +178,8 @@ gets metered and capped.
 
 | What you see | Cause |
 | --- | --- |
-| No free-tier line at all | Not rebuilt after setting env vars, or `uv lock` not re-run |
+| No free-tier line at all | Not rebuilt after setting env vars, or the dependency never reached the image — check step 1's Dockerfile question |
+| Build log says `CACHED` where the install should be | The dependency is not in the file the Dockerfile installs from (usually `requirements.txt` was not regenerated) |
 | `allowance ($*********)` | `FREE_MAX` is marked secret |
 | "no pay-per-event prices" | The Actor is not on PPE pricing, or the owner started the run |
 | "tracking unavailable (...)" | Supabase unreachable or misconfigured; the run continues untracked on purpose |
