@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.3.tar.gz" }
+apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.4.tar.gz" }
 ```
 
 Then re-lock so the Docker build picks it up:
@@ -81,6 +81,22 @@ async def main() -> None:
         if not guard.exhausted:
             await Actor.set_status_message(f"Done. {n} rows.", is_terminal=True)
 ```
+
+### When the Actor must charge for itself
+
+Some Actors call `Actor.charge` directly because they need its result — usually the
+billed count, so they store only what was actually paid for. Replacing that with
+`charge()` would lose the number. Keep the existing call and meter it with `record()`:
+
+```python
+billed, limit_reached = await _charge("product", len(batch))
+if billed and await guard.record("product", billed):
+    stop = True                      # free allowance exhausted
+```
+
+`record()` does the free-tier accounting and never charges, so there is no double
+billing. It is also more accurate than `charge()` here: it meters what the platform
+actually billed rather than what was requested.
 
 ### Guard state
 

@@ -130,6 +130,26 @@ async def test_exhausted_is_true_when_blocked_at_start(actor, db, free_env):
     assert guard.exhausted is True
 
 
+async def test_record_meters_without_charging(actor, db, free_env):
+    """For Actors that must call Actor.charge themselves to get the billed count."""
+    guard = await FreeTierGuard.start()
+
+    stop = await guard.record("item_returned", 3)
+    await guard.close()
+
+    assert stop is False
+    assert actor.charges == []                       # the guard did NOT charge
+    assert db.increment_calls == [Decimal("0.03")]   # but it did meter
+
+
+async def test_record_stops_at_the_cap(actor, db, free_env):
+    guard = await FreeTierGuard.start()
+
+    assert await guard.record("item_returned", 4) is False
+    assert await guard.record("item_returned", 1) is True
+    assert actor.charges == []
+
+
 async def test_counts_multi_unit_charges(actor, db, free_env):
     guard = await FreeTierGuard.start()
 

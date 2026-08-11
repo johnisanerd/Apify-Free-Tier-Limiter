@@ -197,7 +197,27 @@ class FreeTierGuard:
         `is_at_home()` gate lives in here, and it never raises.
         """
         limit_reached = await self._platform_charge(event_name, count)
+        return await self._meter(event_name, count, limit_reached)
 
+    async def record(self, event_name: str, count: int = 1) -> bool:
+        """Meter a charge the Actor already performed itself. Never charges.
+
+        Some Actors have to call `Actor.charge` directly because they need its
+        result - typically the billed count, so they can store only what was
+        actually paid for. Those cannot use `charge()` without either losing that
+        number or billing twice. They keep their own call and pass the billed
+        count here.
+
+            billed, limit_reached = await _charge("product", len(batch))
+            if await guard.record("product", billed):
+                stop = True
+
+        Returns True when the free allowance is now exhausted.
+        """
+        return await self._meter(event_name, count, False)
+
+    async def _meter(self, event_name: str, count: int, limit_reached: bool) -> bool:
+        """Free-tier accounting for `count` events, independent of who charged."""
         if not self._active or count <= 0:
             return limit_reached
 
