@@ -143,7 +143,13 @@ where a batch is expensive.
 
 ## What the user sees
 
+On an Actor that has opted in, **every run says which side of the line it is on**, so a
+silent log means the library is not running rather than quietly skipping:
+
 ```
+INFO  Paid Apify account detected - no free-tier limit applies to this run. Nothing is
+      counted or restricted.
+
 INFO  Free usage this month: $0.02 of $0.50 for this Actor. Paid Apify accounts are never limited.
 WARN  You've used this Actor's full free monthly allowance ($0.50). We're glad it's been
       useful! To keep going, upgrade to a paid Apify account (paid users are never
