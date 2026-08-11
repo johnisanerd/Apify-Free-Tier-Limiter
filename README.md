@@ -179,10 +179,38 @@ policies** and direct grants revoked. The only reachable surface is
 `SECURITY DEFINER`, both rejecting negative amounts and amounts above a per-call ceiling.
 The month key is computed server-side in UTC, so the monthly reset needs no cron.
 
+### The Security Advisor warnings are expected
+
+Supabase's advisor reports two WARNs and one INFO against this project, and all three
+describe the design rather than a defect:
+
+| Advisor item | Why it stays |
+| --- | --- |
+| `anon` can execute `get_usage` / `increment_usage` (WARN ×2) | This is the entire access model. Every Actor ships the publishable key and must be able to call exactly these two functions and nothing else. |
+| `free_tier_usage` has RLS enabled with no policies (INFO) | Deliberate. No policies means the key cannot touch the table at all; the only way in is through the two functions. |
+
+`authenticated` was **not** intended and has been revoked. Supabase's default privileges
+grant EXECUTE on new public functions to `anon`, `authenticated` and `service_role`, so
+the role-specific grants survived the original `revoke ... from public`. Actors only ever
+use the anon key.
+
+Making the functions `SECURITY INVOKER` would be worse, not better: the key would then
+need direct table privileges, and since every Actor shares one anonymous key there is no
+JWT to write a meaningful row-level policy against. Keeping the table unreachable and
+validating inside the functions is the tighter arrangement.
+
 ## Tests
 
 ```bash
 uv sync --extra dev && uv run pytest
+```
+
+`tests/test_integration.py` runs against the real project when `SUPABASE_URL` and
+`SUPABASE_KEY` are set, and writes rows under a `test-actor` namespace. The anon key
+cannot delete, so purge them from the SQL editor when they accumulate:
+
+```sql
+delete from free_tier_usage where actor_id = 'test-actor' or user_id like 'test-%';
 ```
 
 ## Roadmap

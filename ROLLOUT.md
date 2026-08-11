@@ -47,13 +47,19 @@ check before anything was charged. It also has two versions (0.0 and 0.5) both t
 
 ## Live usage
 
-Real external free accounts, current month:
+Real external free accounts, current month (2026-08-11, ~14 hours after the first
+install):
 
-| Actor | Free users | Total metered | Heaviest single user | Charges |
+| Actor | Free users | Total metered | Capped out | Charges |
 | --- | --- | --- | --- | --- |
-| `google-images-api` | 6 | $0.4995 | **$0.4693** | 4,857 |
-| `store-actor-intelligence-api` | 2 | $0.0009 | $0.0005 | 6 |
-| `YoutubeTranscripts` | 4 | $0.0001 | $0.0001 | 11 |
+| `google-images-api` | 15 | $1.5363 | **1** | 14,989 |
+| `YoutubeTranscripts` | 31 | $0.0103 | 0 | 842 |
+| `store-actor-intelligence-api` | 2 | $0.0009 | 0 | 6 |
+
+**The cap has fired once, in production.** A `google-images-api` user reached $1.00 in
+2.8 hours (~$0.35/hour, 9,764 charges) and has recorded nothing in the 7.7 hours since,
+while other users on the same Actor kept going. Had they continued at their own rate,
+that would have been roughly $2.70 more of subsidised compute today, on one user.
 
 Query it directly:
 
