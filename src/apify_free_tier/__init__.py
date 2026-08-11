@@ -20,4 +20,4 @@ from .db import UsageDBError
 from .guard import FreeTierGuard
 
 __all__ = ["FreeTierGuard", "UsageDBError"]
-__version__ = "0.1.2"
+__version__ = "0.1.3"

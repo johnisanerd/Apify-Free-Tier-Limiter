@@ -111,19 +111,25 @@ class FreeTierGuard:
         if not Actor.is_at_home():
             return
 
-        # The whole point: paying users are never limited. FREE_TIER_FORCE lets
-        # us exercise the free path from a paid account during verification.
-        forced = os.getenv("FREE_TIER_FORCE") == "1"
-        if os.getenv("APIFY_USER_IS_PAYING") == "1" and not forced:
-            return
-
         # No FREE_MAX means this Actor has not opted in. That is the normal state
         # for most of the fleet, so it is silent: the library is safe to install
-        # everywhere and enable per Actor.
+        # everywhere and enable per Actor. Checked before the paying-user branch
+        # so a dormant install stays quiet instead of announcing itself on every
+        # run of every Actor.
         free_max = _decimal_or_none(os.getenv("FREE_MAX"))
         if free_max is None or free_max <= 0:
             return
         self._free_max = free_max
+
+        # The whole point: paying users are never limited. Say so out loud. On an
+        # Actor that has opted in, every run now reports which side of the line
+        # it is on, so "no message" always means "not installed" rather than
+        # "installed but silent". FREE_TIER_FORCE exercises the free path from a
+        # paid account during verification.
+        forced = os.getenv("FREE_TIER_FORCE") == "1"
+        if os.getenv("APIFY_USER_IS_PAYING") == "1" and not forced:
+            Actor.log.info(messages.paid_user())
+            return
 
         url, key = os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY")
         if not url or not key:

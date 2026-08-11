@@ -28,7 +28,8 @@ async def test_paying_user_makes_no_database_calls(actor, db, free_env, monkeypa
     assert db.get_calls == 0
     assert db.increment_calls == []
     assert actor.charges == [("item_returned", 1)]  # platform charge still happened
-    assert actor.log.infos == []                      # and stayed silent about it
+    # ...and says so, so that "no message" always means "not installed".
+    assert any("Paid Apify account" in m for m in actor.log.infos)
 
 
 async def test_free_tier_force_overrides_paying_flag(actor, db, free_env, monkeypatch):
@@ -50,6 +51,21 @@ async def test_no_free_max_disables_tracking_silently(actor, db, free_env, monke
 
     assert guard.tracking is False
     assert db.get_calls == 0
+    assert actor.log.warnings == []
+
+
+async def test_dormant_install_says_nothing_even_for_a_paying_user(actor, db, free_env, monkeypatch):
+    """The paid-user announcement is for opted-in Actors only.
+
+    Without this the library would narrate itself on every run of every Actor in
+    the fleet the moment it is installed, before anyone has enabled a cap.
+    """
+    monkeypatch.delenv("FREE_MAX")
+    monkeypatch.setenv("APIFY_USER_IS_PAYING", "1")
+
+    await FreeTierGuard.start()
+
+    assert actor.log.infos == []
     assert actor.log.warnings == []
 
 

@@ -56,6 +56,18 @@ def sdk_too_old(found: str) -> str:
     )
 
 
+def paid_user() -> str:
+    """Logged on every paid run of an opted-in Actor.
+
+    Doubles as the install's proof of life: silence now means the library is not
+    running, instead of being indistinguishable from a working paid-user skip.
+    """
+    return (
+        "Paid Apify account detected - no free-tier limit applies to this run. "
+        "Nothing is counted or restricted."
+    )
+
+
 def no_prices() -> str:
     """FREE_MAX was set, so somebody expected tracking. Never fail this silently."""
     return (
