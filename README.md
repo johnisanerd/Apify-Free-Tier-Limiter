@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.5.tar.gz" }
+apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.6.tar.gz" }
 ```
 
 Then re-lock so the Docker build picks it up:
@@ -185,6 +185,38 @@ WARN  You've used this Actor's full free monthly allowance ($0.50). We're glad i
       limited), or run it again from a different free account. Your free allowance resets
       on the 1st (UTC). Thanks for using this Actor!
 ```
+
+## What lands in the dataset
+
+When the cap stops a run, the explanation is written **into the dataset as a row**, not
+just the log. Most people reach an Actor through the API, an MCP client, or an
+integration and never open a log; to them a capped run would otherwise look like an
+Actor that returned nothing and said nothing.
+
+```json
+{
+  "result_type": "free_tier_limit_reached",
+  "resultType": "free_tier_limit_reached",
+  "message": "Free monthly allowance reached for this Actor. This run returned 25 result(s) before stopping. Free Apify accounts get $2.00 of usage on this Actor per calendar month, and this account has now used $2.01. Nothing is wrong with the Actor or your input. To continue: upgrade to a paid Apify account, which is never limited by this cap ...",
+  "free_allowance_usd": 2.0,
+  "used_this_month_usd": 2.01,
+  "allowance_resets_on": "2026-09-01 (UTC)",
+  "how_to_continue": "Upgrade to a paid Apify account (never limited), or wait for the monthly reset.",
+  "is_error": false
+}
+```
+
+Both `result_type` and `resultType` are set because the fleet is split between the two
+spellings, and the row should be recognisable whichever one a consumer filters on.
+
+Set `FREE_TIER_NOTICE_ROW=0` on an Actor whose output schema will not accept the extra
+row. The push is guarded regardless: if it fails, the run continues and the reason is
+still in the log and the run's status message.
+
+The guard also **re-asserts its terminal status message from `close()`**. Actors post
+progress updates ("Returned 25 so far...") after each charge, which overwrite the status
+set the moment the cap bit; writing last means the user is left looking at the reason
+rather than a half-finished progress line.
 
 ## Database
 

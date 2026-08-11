@@ -23,6 +23,8 @@ Three properties matter more than the feature itself:
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import asyncio
 import os
 from decimal import Decimal, InvalidOperation
@@ -51,6 +53,7 @@ class FreeTierGuard:
         self._active = False          # tracking on? False = inert passthrough
         self._blocked = False         # already over the cap before any work began
         self._exhausted = False       # the cap ended this run, at start or mid-run
+        self._charged_rows = 0        # events metered, quoted back in the notice row
         self._free_max = _ZERO
         self._known_total = _ZERO     # last authoritative total from the database
         self._pending = _ZERO         # charged locally, not yet flushed
@@ -229,6 +232,7 @@ class FreeTierGuard:
             return limit_reached
 
         self._pending += price * count
+        self._charged_rows += count
         self._schedule_flush()
 
         # `known_total + pending` is the whole reason the background flush is
@@ -306,10 +310,39 @@ class FreeTierGuard:
         self._exhausted = True
         message = messages.exhausted(self._free_max)
         Actor.log.warning(message)
+        await self._set_terminal_status(message)
+        await self._push_notice_row()
+
+    async def _set_terminal_status(self, message: str) -> None:
         try:
             await Actor.set_status_message(message, is_terminal=True)
         except Exception:  # noqa: BLE001 - a status message is never worth failing over
             pass
+
+    async def _push_notice_row(self) -> None:
+        """Put the explanation in the dataset, where API and MCP callers will see it.
+
+        Pushed at the moment the cap bites rather than at close(), because a user
+        blocked before any work returns straight out of the Actor and close()
+        never runs - which is exactly the case where the dataset would otherwise
+        be empty and unexplained.
+
+        Set FREE_TIER_NOTICE_ROW=0 on an Actor whose output schema rejects the
+        extra row. The push is guarded either way: an Actor must never fail
+        because we tried to be helpful.
+        """
+        if os.getenv("FREE_TIER_NOTICE_ROW") == "0":
+            return
+        try:
+            await Actor.push_data(messages.notice_row(
+                self._free_max, self._known_total + self._pending,
+                _next_reset(), self._charged_rows or None,
+            ))
+        except Exception as exc:  # noqa: BLE001
+            Actor.log.warning(
+                f"Could not add the free-tier notice to the dataset ({type(exc).__name__}); "
+                "the explanation is in the log and the run status message."
+            )
 
     async def _deactivate(self) -> None:
         self._active = False
@@ -323,10 +356,24 @@ class FreeTierGuard:
             await self._drain()
         except Exception:  # noqa: BLE001
             pass
+        if self._exhausted:
+            # Say it again on the way out. Most Actors post progress updates
+            # ("Returned 25 so far...") after each charge, which overwrite the
+            # terminal status we set the moment the cap bit - so by the end of
+            # the run the reason has been buried. This is the last write, so it
+            # is the one the user is left looking at.
+            await self._set_terminal_status(messages.exhausted(self._free_max))
         await self._deactivate()
 
 
 # --------------------------------------------------------------------- helpers
+
+
+def _next_reset() -> str:
+    """First of next month, UTC - when the counter's period key rolls over."""
+    now = datetime.now(timezone.utc)
+    year, month = (now.year + 1, 1) if now.month == 12 else (now.year, now.month + 1)
+    return f"{year:04d}-{month:02d}-01 (UTC)"
 
 
 def _log_environment() -> None:

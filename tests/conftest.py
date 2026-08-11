@@ -54,6 +54,7 @@ class FakeActor:
         self.log = FakeLog()
         self.charges: list[tuple[str, int]] = []
         self.status_messages: list[str] = []
+        self.pushed: list[dict] = []
         self.charge_limit_reached = False
 
     def is_at_home(self) -> bool:
@@ -71,6 +72,9 @@ class FakeActor:
 
     async def set_status_message(self, message: str, is_terminal: bool = False) -> None:
         self.status_messages.append(message)
+
+    async def push_data(self, data) -> None:
+        self.pushed.extend(data if isinstance(data, list) else [data])
 
 
 class FakeDB:

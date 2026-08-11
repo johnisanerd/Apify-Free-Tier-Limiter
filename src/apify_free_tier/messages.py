@@ -41,6 +41,45 @@ def exhausted(free_max: Decimal) -> str:
     )
 
 
+def notice_row(free_max: Decimal, spent: Decimal, resets_on: str, rows_returned: int | None) -> dict:
+    """The explanation as a dataset row, for people who never read the log.
+
+    Most consumers reach an Actor through the API, an MCP client, or an
+    integration, and only ever see the dataset. To them a capped run looks like
+    an Actor that returned nothing and said nothing - indistinguishable from
+    broken. This row is the difference between "it stopped and told me why" and
+    a one-star review.
+
+    Deliberately verbose: it is the only place the full story is guaranteed to
+    reach the user.
+    """
+    got = (
+        f"This run returned {rows_returned} result(s) before stopping."
+        if rows_returned else
+        "This run returned no results because the allowance was already used up."
+    )
+    return {
+        # Both spellings: the fleet is split between result_type and resultType,
+        # and this row should be recognisable whichever one a consumer filters on.
+        "result_type": "free_tier_limit_reached",
+        "resultType": "free_tier_limit_reached",
+        "message": (
+            f"Free monthly allowance reached for this Actor. {got} "
+            f"Free Apify accounts get {money(free_max)} of usage on this Actor per calendar "
+            f"month, and this account has now used {money(spent)}. Nothing is wrong with the "
+            "Actor or your input. "
+            "To continue: upgrade to a paid Apify account, which is never limited by this cap "
+            "and lets you run the Actor as much as you like; or wait for the allowance to reset; "
+            f"or run it from a different free account. The allowance resets on {resets_on}."
+        ),
+        "free_allowance_usd": float(free_max),
+        "used_this_month_usd": float(spent),
+        "allowance_resets_on": resets_on,
+        "how_to_continue": "Upgrade to a paid Apify account (never limited), or wait for the monthly reset.",
+        "is_error": False,
+    }
+
+
 def tracking_unavailable(reason: str) -> str:
     """The permissive path. An outage on our side must not break someone's run."""
     return (

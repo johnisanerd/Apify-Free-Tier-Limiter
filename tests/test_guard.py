@@ -298,3 +298,66 @@ async def test_free_max_tolerates_sloppy_input(actor, db, free_env, monkeypatch,
     guard = await FreeTierGuard.start()
 
     assert guard._free_max == Decimal(expected)
+
+
+# ------------------------------------------- promise 5: the user is told why
+
+async def test_the_reason_reaches_the_dataset_not_just_the_log(actor, db, free_env):
+    """API and MCP callers only ever see the dataset. Without a row there, a
+    capped run is indistinguishable from an Actor that silently does nothing."""
+    guard = await FreeTierGuard.start()
+
+    for _ in range(5):
+        await guard.charge("item_returned", 1)
+
+    notice = [row for row in actor.pushed if row.get("result_type") == "free_tier_limit_reached"]
+    assert len(notice) == 1
+    assert "upgrade to a paid Apify account" in notice[0]["message"]
+    assert notice[0]["free_allowance_usd"] == 0.05
+    assert notice[0]["allowance_resets_on"].endswith("(UTC)")
+
+
+async def test_blocked_at_start_still_explains_itself_in_the_dataset(actor, db, free_env):
+    """The worst case: no results at all. The row is the only thing the caller gets."""
+    db.total = Decimal("0.05")
+
+    await FreeTierGuard.start()
+
+    notice = [row for row in actor.pushed if row.get("result_type") == "free_tier_limit_reached"]
+    assert len(notice) == 1
+    assert "no results" in notice[0]["message"]
+
+
+async def test_notice_row_can_be_switched_off(actor, db, free_env, monkeypatch):
+    """For an Actor whose output schema will not accept the extra row."""
+    monkeypatch.setenv("FREE_TIER_NOTICE_ROW", "0")
+    db.total = Decimal("0.05")
+
+    await FreeTierGuard.start()
+
+    assert actor.pushed == []
+
+
+async def test_a_failed_notice_push_never_breaks_the_run(actor, db, free_env):
+    async def boom(_data):
+        raise RuntimeError("schema rejected the row")
+    actor.push_data = boom
+    db.total = Decimal("0.05")
+
+    guard = await FreeTierGuard.start()
+
+    assert guard.blocked is True                       # still stopped correctly
+    assert any("Could not add the free-tier notice" in w for w in actor.log.warnings)
+
+
+async def test_close_reasserts_the_reason_after_progress_messages(actor, db, free_env):
+    """Actors post 'Returned 25 so far...' after each charge, which buries the
+    guard's terminal status. The last write wins, so the guard writes last."""
+    guard = await FreeTierGuard.start()
+
+    for _ in range(5):
+        await guard.charge("item_returned", 1)
+    await actor.set_status_message("Returned 25 Actors so far...")   # the Actor clobbers it
+    await guard.close()
+
+    assert "full free monthly allowance" in actor.status_messages[-1]

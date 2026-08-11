@@ -1,6 +1,6 @@
 [project]
 name = "apify-free-tier"
-version = "0.1.5"
+version = "0.1.6"
 description = "Monthly free-tier usage cap for Apify Actors. Protects the Actor owner's wallet on free and loss-leader Actors; paying Apify users are never limited."
 readme = "README.md"
 requires-python = ">=3.11"

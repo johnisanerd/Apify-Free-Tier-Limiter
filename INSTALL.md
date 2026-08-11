@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.5.tar.gz" }
+apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.6.tar.gz" }
 ```
 
 Then re-lock:
