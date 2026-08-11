@@ -248,7 +248,7 @@ async def test_old_sdk_goes_inert(actor, db, free_env, monkeypatch):
     guard = await FreeTierGuard.start()
 
     assert guard.tracking is False
-    assert any("3.0 or newer" in w for w in actor.log.warnings)
+    assert any("report event prices" in w for w in actor.log.warnings)
 
 
 async def test_non_ppe_actor_is_not_metered(actor, db, free_env):
