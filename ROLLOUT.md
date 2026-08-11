@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (7 of 103 Actors, as of 2026-08-11)
+## Enabled (10 of 103 Actors, as of 2026-08-11)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -29,9 +29,12 @@ variables, or a test flag left switched on.
 | `johnvc/google-images-api` | `bvAQMqCbp6wE53JzK` | $1.00 | v0.1.3 | OK |
 | `johnvc/YoutubeTranscripts` | `zPumutvB61fpEsglh` | $1.00 | v0.1.3 | OK |
 | `johnvc/google-maps-places-api` | `WQbrHYgrJV5fP6b09` | $2.00 | v0.1.4 | OK |
-| `johnvc/google-news-lite-api` | `Sl7mQJeH9MvLhgGYy` | $2.00 | v0.1.4 | OK |
-| `johnvc/google-shopping-lite-api` | `YrCMNywfEbYqWpgdF` | $2.00 | v0.1.4 | OK |
-| `johnvc/google-scholar-lite-api` | `ChRMxpDtEqlJHZDga` | $2.00 | v0.1.4 | OK |
+| `johnvc/google-news-lite-api` | `Sl7mQJeH9MvLhgGYy` | $1.00 | v0.1.4 | OK |
+| `johnvc/google-shopping-lite-api` | `YrCMNywfEbYqWpgdF` | $1.00 | v0.1.4 | OK |
+| `johnvc/google-scholar-lite-api` | `ChRMxpDtEqlJHZDga` | $1.00 | v0.1.4 | OK |
+| `johnvc/Scrape-Yandex` | `y7gc70pJD81ubH2I9` | $2.50 | v0.1.5 | OK |
+| `johnvc/yandex-reverse-image-search` | `FdyxaCtHdVcA1FBDm` | $2.50 | v0.1.5 | OK |
+| `johnvc/yandex-...-per-result` | `enUmNny2eNO4pE269` | $2.50 | v0.1.5 | **not metering** |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -67,6 +70,37 @@ twice or losing that count. This is why `record()` exists: the Actor keeps its o
 `_charge` call and meters the billed number. `allowance_spent` is kept separate from the
 existing `charge_limit_hit`, whose message ("storing more would be unbilled") is the
 wrong explanation for a free user who simply used up the month.
+
+**`Scrape-Yandex`**, **`yandex-...-per-result`** — on apify SDK **2.7.3**, which disproved
+the library's `>=3.0` floor: both call `get_charging_manager().get_pricing_info()` and get
+real prices there. v0.1.5 lowered the bound to `>=2.7`; the runtime capability probe, not
+a version number, decides whether the guard can meter. Both verify `charged_count`
+themselves, so they keep their own `Actor.charge` calls and meter with `record()` at three
+sites each, including the once-per-run setup fee.
+
+**`yandex-reverse-image-search`** — expensive per run. One search returned 146 results,
+$1.83 of metered spend, so $2.50 is about **one run per free user per month**. Worth a
+second look at that number.
+
+## Known problem: per-result is not metering
+
+`yandex-...-per-result` charges `setup` and `page_processed`, but its pricing config
+defines neither — the platform logs `Attempting to charge for an unknown event 'setup'`
+and drops the charge, and `per_event_prices` returns only
+`{apify-default-dataset-item, startup}`. So those charges earn nothing **and** the guard
+cannot price them. The cap is installed but protecting nothing until the pricing config
+is fixed. Its twin `Scrape-Yandex` resolves the same two events correctly, so compare
+their `.actor/actor.json` pricing blocks.
+
+## Monitoring
+
+```bash
+python3 scripts/health_check.py --hours 3
+```
+
+Checks every capped Actor for a secret `FREE_MAX`, a test flag left on, guard warnings in
+recent runs, failed runs, and Actors where the guard never spoke. Exits non-zero when
+something needs attention, so it can drive a cron.
 
 ## Choosing the next Actors
 

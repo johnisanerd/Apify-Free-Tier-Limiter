@@ -99,6 +99,33 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "requirements.txt",
         "notes": "Inline Actor.charge. maxResultsPerSearch has a schema minimum of 10.",
     },
+    "y7gc70pJD81ubH2I9": {
+        "github_repo": "johnisanerd/ApifyYandex",
+        "local_path": "~/Github/ApifyYandex/ApifyYandex",
+        "installed_utc": "2026-08-11",
+        "charge_event": "setup + page_processed",
+        "charge_granularity": "per page",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Runs on apify SDK 2.7.3. Verifies charged_count itself, so it keeps its own Actor.charge calls and meters with guard.record() at three sites; the once-per-run setup fee is metered too.",
+    },
+    "FdyxaCtHdVcA1FBDm": {
+        "github_repo": "johnisanerd/ApifyYandexReverseImage",
+        "local_path": "~/Github/ApifyYandexReverseImage/ApifyYandexReverseImage",
+        "installed_utc": "2026-08-11",
+        "charge_event": "result_returned",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Expensive per run: one search returned 146 results = $1.83, so $2.50 is roughly a single run per month.",
+    },
+    "enUmNny2eNO4pE269": {
+        "github_repo": "johnisanerd/ApifyYandexPayPerResult",
+        "local_path": "~/Github/ApifyYandexPayPerResult/ApifyYandex",
+        "installed_utc": "2026-08-11",
+        "charge_event": "setup + page_processed",
+        "charge_granularity": "per page",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "NOT METERING: the Actor charges setup and page_processed but its pricing config defines neither, so the platform drops those charges and the guard cannot price them. Fix the pricing config and this starts working.",
+    },
 }
 
 COLUMNS = [
