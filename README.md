@@ -30,8 +30,9 @@ run starts ──> paying user?  ──yes──> inert, zero overhead
 ## Install
 
 **[INSTALL.md](INSTALL.md) is the step-by-step checklist for adding this to an Actor**,
-including how to pick `FREE_MAX`, how to verify, and what each failure looks like. The
-short version follows.
+including how to pick `FREE_MAX`, how to verify, and what each failure looks like.
+**[ROLLOUT.md](ROLLOUT.md) lists which Actors have it today**, with live usage and what
+each integration taught us. The short version follows.
 
 Actors in this fleet install from a pinned release tag, so a build is always
 reproducible. Add to the Actor's `pyproject.toml`:
