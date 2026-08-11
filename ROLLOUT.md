@@ -6,6 +6,17 @@ Which Actors have the free-tier cap enabled. Snapshot below; regenerate any time
 python3 scripts/list_installs.py --markdown
 ```
 
+A tracking spreadsheet lands at `~/Desktop/Apify/free-tier-limiter-rollout.csv`:
+
+```bash
+python3 scripts/export_rollout_csv.py --usage-json /tmp/usage.json
+```
+
+Add an `INTEGRATIONS` entry to that script on every new install — it carries the facts
+no API knows (repo, charge event, which file the Dockerfile installs from). Drop
+`--usage-json` to skip the usage columns; build the file from the aggregate query under
+[Live usage](#live-usage), since the anon key cannot read aggregates.
+
 That scan is the source of truth — it reads the live Actor configuration rather than
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
