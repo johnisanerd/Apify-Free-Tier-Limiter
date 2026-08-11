@@ -1,6 +1,6 @@
 [project]
 name = "apify-free-tier"
-version = "0.1.4"
+version = "0.1.5"
 description = "Monthly free-tier usage cap for Apify Actors. Protects the Actor owner's wallet on free and loss-leader Actors; paying Apify users are never limited."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -8,13 +8,14 @@ license = { text = "MIT" }
 authors = [{ name = "John Cole" }]
 keywords = ["apify", "actor", "pay-per-event", "free-tier", "usage-limit", "supabase"]
 
-# apify >= 3.0 is the floor: Actor.get_charging_manager() and
-# ChargingManager.get_pricing_info() arrived in 3.0.0 (2025-09-29). Actor.charge
-# itself is older (2.3.0), but without the pricing API we cannot know what a
-# charge costs in dollars. The runtime probe in guard.py re-checks this and goes
-# inert rather than crashing if an Actor somehow installs an older SDK.
+# apify >= 2.7 is the floor, set by observation rather than the changelog:
+# johnvc/Scrape-Yandex runs get_charging_manager().get_pricing_info() and reads
+# per_event_prices on 2.7.3 in production. The real gate is the capability probe
+# in guard.py, which runs every time and turns the guard inert if the SDK cannot
+# report prices, so this bound only needs to be loose enough not to block an
+# Actor that would actually work.
 dependencies = [
-    "apify>=3.0,<5",
+    "apify>=2.7,<5",
     "httpx>=0.27,<1",
 ]
 

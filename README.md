@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.4.tar.gz" }
+apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.5.tar.gz" }
 ```
 
 Then re-lock so the Docker build picks it up:
@@ -151,7 +151,7 @@ Every failure path logs once and lets the run continue **untracked**:
 - Supabase unreachable or slow (2.5s timeout, one retry at start)
 - three consecutive flush failures (circuit breaker; stops retrying for the rest of the run)
 - `FREE_MAX` unset or unparseable, Supabase not configured
-- Apify SDK older than 3.0, or an Actor that is not on pay-per-event pricing
+- Apify SDK too old to report prices, or an Actor that is not on pay-per-event pricing
 - an event with no readable price (warned once, that event is not counted)
 
 The alternative — refusing to run when our own database is down — punishes users for our
