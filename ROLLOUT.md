@@ -25,16 +25,16 @@ variables, or a test flag left switched on.
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
-| `johnvc/store-actor-intelligence-api` | `WzsyD0afch5fKHGn5` | $1.00 | v0.1.3 | OK |
-| `johnvc/google-images-api` | `bvAQMqCbp6wE53JzK` | $1.00 | v0.1.3 | OK |
-| `johnvc/YoutubeTranscripts` | `zPumutvB61fpEsglh` | $1.00 | v0.1.3 | OK |
-| `johnvc/google-maps-places-api` | `WQbrHYgrJV5fP6b09` | $1.00 | v0.1.4 | OK |
-| `johnvc/google-news-lite-api` | `Sl7mQJeH9MvLhgGYy` | $1.00 | v0.1.4 | OK |
-| `johnvc/google-shopping-lite-api` | `YrCMNywfEbYqWpgdF` | $1.00 | v0.1.4 | OK |
-| `johnvc/google-scholar-lite-api` | `ChRMxpDtEqlJHZDga` | $1.00 | v0.1.4 | OK |
-| `johnvc/Scrape-Yandex` | `y7gc70pJD81ubH2I9` | $2.50 | v0.1.5 | OK |
-| `johnvc/yandex-reverse-image-search` | `FdyxaCtHdVcA1FBDm` | $2.50 | v0.1.5 | OK |
-| `johnvc/yandex-...-per-result` | `enUmNny2eNO4pE269` | $2.50 | v0.1.5 | **not metering** |
+| `johnvc/store-actor-intelligence-api` | `WzsyD0afch5fKHGn5` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-images-api` | `bvAQMqCbp6wE53JzK` | $1.00 | v0.1.7 | OK |
+| `johnvc/YoutubeTranscripts` | `zPumutvB61fpEsglh` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-maps-places-api` | `WQbrHYgrJV5fP6b09` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-news-lite-api` | `Sl7mQJeH9MvLhgGYy` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-shopping-lite-api` | `YrCMNywfEbYqWpgdF` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-scholar-lite-api` | `ChRMxpDtEqlJHZDga` | $1.00 | v0.1.7 | OK |
+| `johnvc/Scrape-Yandex` | `y7gc70pJD81ubH2I9` | $2.50 | v0.1.7 | OK |
+| `johnvc/yandex-reverse-image-search` | `FdyxaCtHdVcA1FBDm` | $2.50 | v0.1.7 | OK |
+| `johnvc/yandex-...-per-result` | `enUmNny2eNO4pE269` | $2.50 | v0.1.7 | **not metering** |
 | `johnvc/google-autocomplete-api` | `VVMGjb2KwyOPsXcwU` | $1.00 | v0.1.7 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
@@ -43,7 +43,8 @@ matches the tier-resolved price.
 
 ## What each one taught us
 
-Seven installs, seven different charge shapes. Check the shape before you start.
+Eleven installs, and no two Actors have had the same charge shape until the eleventh.
+Check the shape before you start.
 
 **`store-actor-intelligence-api`** (pilot) — the common fleet shape: a local
 `_charge(event, count) -> bool` helper, batch charging after `push_data`. One-line swap.
@@ -78,6 +79,10 @@ real prices there. v0.1.5 lowered the bound to `>=2.7`; the runtime capability p
 a version number, decides whether the guard can meter. Both verify `charged_count`
 themselves, so they keep their own `Actor.charge` calls and meter with `record()` at three
 sites each, including the once-per-run setup fee.
+
+**`google-autocomplete-api`** — the first install with no surprises at all: identical
+inline `Actor.charge` shape to google-images, `requirements.txt` Dockerfile, done in one
+pass. $1.00 buys about 500 suggestions a month.
 
 **`yandex-reverse-image-search`** — expensive per run. One search returned 146 results,
 $1.83 of metered spend, so $2.50 is about **one run per free user per month**. Worth a
