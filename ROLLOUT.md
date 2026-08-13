@@ -21,20 +21,21 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (10 of 103 Actors, as of 2026-08-11)
+## Enabled (11 of 103 Actors, as of 2026-08-13)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
 | `johnvc/store-actor-intelligence-api` | `WzsyD0afch5fKHGn5` | $1.00 | v0.1.3 | OK |
 | `johnvc/google-images-api` | `bvAQMqCbp6wE53JzK` | $1.00 | v0.1.3 | OK |
 | `johnvc/YoutubeTranscripts` | `zPumutvB61fpEsglh` | $1.00 | v0.1.3 | OK |
-| `johnvc/google-maps-places-api` | `WQbrHYgrJV5fP6b09` | $2.00 | v0.1.4 | OK |
+| `johnvc/google-maps-places-api` | `WQbrHYgrJV5fP6b09` | $1.00 | v0.1.4 | OK |
 | `johnvc/google-news-lite-api` | `Sl7mQJeH9MvLhgGYy` | $1.00 | v0.1.4 | OK |
 | `johnvc/google-shopping-lite-api` | `YrCMNywfEbYqWpgdF` | $1.00 | v0.1.4 | OK |
 | `johnvc/google-scholar-lite-api` | `ChRMxpDtEqlJHZDga` | $1.00 | v0.1.4 | OK |
 | `johnvc/Scrape-Yandex` | `y7gc70pJD81ubH2I9` | $2.50 | v0.1.5 | OK |
 | `johnvc/yandex-reverse-image-search` | `FdyxaCtHdVcA1FBDm` | $2.50 | v0.1.5 | OK |
 | `johnvc/yandex-...-per-result` | `enUmNny2eNO4pE269` | $2.50 | v0.1.5 | **not metering** |
+| `johnvc/google-autocomplete-api` | `VVMGjb2KwyOPsXcwU` | $1.00 | v0.1.7 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount

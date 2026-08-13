@@ -70,7 +70,7 @@ INTEGRATIONS = {
         "charge_event": "place",
         "charge_granularity": "per item",
         "dockerfile_installs_from": "uv.lock",
-        "notes": "Inline Actor.charge, same shape as google-images.",
+        "notes": "Inline Actor.charge, same shape as google-images. Cap halved $2.00 -> $1.00 on 2026-08-13, which put 6 existing users over 50% overnight.",
     },
     "Sl7mQJeH9MvLhgGYy": {
         "github_repo": "johnisanerd/ApifyGoogleNewsLite",
@@ -125,6 +125,15 @@ INTEGRATIONS = {
         "charge_granularity": "per page",
         "dockerfile_installs_from": "uv.lock",
         "notes": "NOT METERING: the Actor charges setup and page_processed but its pricing config defines neither, so the platform drops those charges and the guard cannot price them. Fix the pricing config and this starts working.",
+    },
+    "VVMGjb2KwyOPsXcwU": {
+        "github_repo": "johnisanerd/ApifyGoogleAutocomplete",
+        "local_path": "~/Github/ApifyGoogleAutocomplete/ApifyGoogleAutocomplete",
+        "installed_utc": "2026-08-13",
+        "charge_event": "suggestion_returned",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Cleanest install so far: same inline Actor.charge shape as google-images, no surprises. $1.00 buys about 500 suggestions a month.",
     },
 }
 
