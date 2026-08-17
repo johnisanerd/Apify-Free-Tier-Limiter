@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (11 of 103 Actors, as of 2026-08-13)
+## Enabled (12 of 103 Actors, as of 2026-08-17)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -36,6 +36,7 @@ variables, or a test flag left switched on.
 | `johnvc/yandex-reverse-image-search` | `FdyxaCtHdVcA1FBDm` | $2.50 | v0.1.7 | OK |
 | `johnvc/yandex-...-per-result` | `enUmNny2eNO4pE269` | $2.50 | v0.1.7 | **not metering** |
 | `johnvc/google-autocomplete-api` | `VVMGjb2KwyOPsXcwU` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-hotels-search-scraper` | `ahpk7S3a62kOzKdE9` | $1.00 | v0.1.7 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -87,6 +88,12 @@ pass. $1.00 buys about 500 suggestions a month.
 **`yandex-reverse-image-search`** — expensive per run. One search returned 146 results,
 $1.83 of metered spend, so $2.50 is about **one run per free user per month**. Worth a
 second look at that number.
+
+**`google-hotels-search-scraper`** — twelfth install, two firsts: no pyproject or
+lockfile anywhere (requirements.txt is the source of truth, so the httpx chain is
+pinned there by hand), and four run modes (search, autocomplete, photos, reviews) that
+all funnel through one `_charge` helper — so the guard is routed through that single
+seam with a module-level handle instead of patching ten call sites.
 
 ## Known problem: per-result is not metering
 

@@ -135,6 +135,15 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "requirements.txt",
         "notes": "Cleanest install so far: same inline Actor.charge shape as google-images, no surprises. $1.00 buys about 500 suggestions a month.",
     },
+    "ahpk7S3a62kOzKdE9": {
+        "github_repo": "johnisanerd/ApifyGoogleHotels",
+        "local_path": "~/Github/ApifyGoogleHotels/ApifyGoogleHotels",
+        "installed_utc": "2026-08-17",
+        "charge_event": "setup + page_processed + 3 per-item events",
+        "charge_granularity": "per page/item",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "No pyproject/uv.lock at all - requirements.txt is the source of truth, httpx chain pinned by hand. All four modes funnel through one _charge helper, so the guard is routed via a module-level handle instead of ten call sites.",
+    },
 }
 
 COLUMNS = [
