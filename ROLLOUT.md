@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (12 of 103 Actors, as of 2026-08-17)
+## Enabled (14 of 103 Actors, as of 2026-08-17)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -37,6 +37,8 @@ variables, or a test flag left switched on.
 | `johnvc/yandex-...-per-result` | `enUmNny2eNO4pE269` | $2.50 | v0.1.7 | **not metering** |
 | `johnvc/google-autocomplete-api` | `VVMGjb2KwyOPsXcwU` | $1.00 | v0.1.7 | OK |
 | `johnvc/google-hotels-search-scraper` | `ahpk7S3a62kOzKdE9` | $1.00 | v0.1.7 | OK |
+| `johnvc/apple-app-store-reviews-api` | `k3dKElhh0XK52g619` | $1.00 | v0.1.7 | OK |
+| `johnvc/Google-AI-Overview-API` | `XqEZodkkqvqAtiSkV` | $1.00 | v0.1.7 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -94,6 +96,15 @@ lockfile anywhere (requirements.txt is the source of truth, so the httpx chain i
 pinned there by hand), and four run modes (search, autocomplete, photos, reviews) that
 all funnel through one `_charge` helper — so the guard is routed through that single
 seam with a module-level handle instead of patching ten call sites.
+
+**`apple-app-store-reviews-api`** — the first Actor living on version **0.1** rather than
+0.0 (the enable script's versions[0] convention still held). Verifies `charged_count` on
+both charges, so it keeps its own `Actor.charge` calls and meters with `record()`; the
+allowance stop reuses the existing `budget_exhausted` short-circuit.
+
+**`Google-AI-Overview-API`** — news-lite shape (`_charge` returned `None`, never stopped)
+plus a multi-count charge (`retrievals_used`). Routed through the guard via a
+module-level handle; a row already billed is still pushed before the stop takes effect.
 
 ## Known problem: per-result is not metering
 

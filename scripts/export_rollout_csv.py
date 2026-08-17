@@ -144,6 +144,24 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "requirements.txt",
         "notes": "No pyproject/uv.lock at all - requirements.txt is the source of truth, httpx chain pinned by hand. All four modes funnel through one _charge helper, so the guard is routed via a module-level handle instead of ten call sites.",
     },
+    "k3dKElhh0XK52g619": {
+        "github_repo": "johnisanerd/ApifyAppStoreReviews",
+        "local_path": "~/Github/ApifyAppStoreReviews/ApifyAppStoreReviews",
+        "installed_utc": "2026-08-17",
+        "charge_event": "setup + review",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Lives on version 0.1, not 0.0. Verifies charged_count on both charges, so it keeps its own Actor.charge calls and meters with guard.record(); the allowance stop reuses the existing budget_exhausted short-circuit.",
+    },
+    "XqEZodkkqvqAtiSkV": {
+        "github_repo": "johnisanerd/ApifyGoogleAIOverview",
+        "local_path": "~/Github/ApifyGoogleAIOverview/ApifyGoogleAIOverview",
+        "installed_utc": "2026-08-17",
+        "charge_event": "setup + overview-retrieval",
+        "charge_granularity": "per retrieval (multi-count)",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "news-lite shape: _charge returned None and never stopped. Now routed through the guard via a module-level handle and the query loop stops; a row already billed is still pushed before stopping.",
+    },
 }
 
 COLUMNS = [
