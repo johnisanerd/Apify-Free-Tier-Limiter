@@ -247,7 +247,9 @@ class FreeTierGuard:
         if not Actor.is_at_home() or count <= 0:
             return False
         try:
-            result = await Actor.charge(event_name, count)
+            # Keyword form: `count` is keyword-only in apify>=4 and
+            # positional-or-keyword in 3.x, so this works on both majors.
+            result = await Actor.charge(event_name, count=count)
             return bool(getattr(result, "event_charge_limit_reached", False))
         except Exception as exc:  # noqa: BLE001
             Actor.log.warning(f"Failed to charge '{event_name}' x{count}: {exc}")
