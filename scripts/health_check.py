@@ -51,7 +51,16 @@ def token() -> str:
     try:
         return json.load(open(os.path.expanduser("~/.apify/auth.json")))["token"]
     except (OSError, KeyError):
-        sys.exit("No Apify token. Set APIFY_TOKEN or run `apify login`.")
+        pass
+    # The Apify CLI keeps its token in the OS keychain when auth.json says
+    # secretsBackend: keyring, so fall back to the fleet-tooling .env.
+    try:
+        for line in open(os.path.expanduser("~/Github/ApifyUpdate/.env")):
+            if line.startswith("APIFY_TOKEN=") and line.split("=", 1)[1].strip():
+                return line.split("=", 1)[1].strip()
+    except OSError:
+        pass
+    sys.exit("No Apify token. Set APIFY_TOKEN or run `apify login`.")
 
 
 def call(path: str) -> dict:

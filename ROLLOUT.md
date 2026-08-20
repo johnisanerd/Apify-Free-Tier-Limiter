@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (14 of 103 Actors, as of 2026-08-17)
+## Enabled (17 of 103 Actors, as of 2026-08-20)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -34,11 +34,14 @@ variables, or a test flag left switched on.
 | `johnvc/google-scholar-lite-api` | `ChRMxpDtEqlJHZDga` | $1.00 | v0.1.7 | OK |
 | `johnvc/Scrape-Yandex` | `y7gc70pJD81ubH2I9` | $2.50 | v0.1.7 | OK |
 | `johnvc/yandex-reverse-image-search` | `FdyxaCtHdVcA1FBDm` | $2.50 | v0.1.7 | OK |
-| `johnvc/yandex-...-per-result` | `enUmNny2eNO4pE269` | $2.50 | v0.1.7 | **not metering** |
+| `johnvc/yandex-...-per-result` | `enUmNny2eNO4pE269` | $2.50 | v0.1.7 | OK |
 | `johnvc/google-autocomplete-api` | `VVMGjb2KwyOPsXcwU` | $1.00 | v0.1.7 | OK |
 | `johnvc/google-hotels-search-scraper` | `ahpk7S3a62kOzKdE9` | $1.00 | v0.1.7 | OK |
 | `johnvc/apple-app-store-reviews-api` | `k3dKElhh0XK52g619` | $1.00 | v0.1.7 | OK |
 | `johnvc/Google-AI-Overview-API` | `XqEZodkkqvqAtiSkV` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-events-api-...` | `DfdUgh7nBLKe78irv` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-scholar-api` | `m22qEjpnfxa4H1ijE` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-local-api` | `bZ3PtlNaHVObbbR4O` | $1.00 | v0.1.7 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -106,15 +109,36 @@ allowance stop reuses the existing `budget_exhausted` short-circuit.
 plus a multi-count charge (`retrievals_used`). Routed through the guard via a
 module-level handle; a row already billed is still pushed before the stop takes effect.
 
-## Known problem: per-result is not metering
+**`google-events-api`** — verifies `charged_count` on all three of its events, so it
+meters with `record()`. Its `requirements.txt` is a `uv export` of the repo-root
+pyproject — regenerate it, don't hand-edit. GitHub webhook is null (one of the known
+11), so a push alone deploys nothing; the enable script's rebuild is the deploy.
 
-`yandex-...-per-result` charges `setup` and `page_processed`, but its pricing config
-defines neither — the platform logs `Attempting to charge for an unknown event 'setup'`
-and drops the charge, and `per_event_prices` returns only
-`{apify-default-dataset-item, startup}`. So those charges earn nothing **and** the guard
-cannot price them. The cap is installed but protecting nothing until the pricing config
-is fixed. Its twin `Scrape-Yandex` resolves the same two events correctly, so compare
-their `.actor/actor.json` pricing blocks.
+**`google-scholar-api`** — the first Actor that already had its own free-tier policy
+(a per-*run* upstream-call budget in `tier_policy.py`). The guard layers the
+per-*month* allowance on top; its exhausted check mirrors the existing budget break at
+the `__charge__` marker, so items a free user was already billed for still get stored.
+
+**`google-local-api`** — `page_processed` was fire-and-forget (`Actor.charge` result
+ignored), which makes `guard.charge()` a straight swap at that site; `setup` verifies
+`charged_count` and meters with `record()`. Second Actor on version 0.1.
+
+## Resolved 2026-08-18: per-result now meters
+
+For its first week installed, `yandex-...-per-result` charged `setup` and
+`page_processed` while its pricing config defined neither — the platform dropped the
+charges as unknown events and `per_event_prices` couldn't price them, so the cap
+protected nothing. A pricing migration scheduled 2026-08-03 went live
+2026-08-17 19:33 UTC and defined both events (tiered; $0.08/$0.10 at FREE). Within a
+day the guard metered its first two free users and capped one at $2.56. Lesson: a
+charge event only works if the *live* pricing config defines it — check
+`per_event_prices` at install time, and remember a fix may already be sitting in a
+scheduled `pricingInfos` entry rather than needing a new one.
+
+Note: the same migration also kept `apify-default-dataset-item` at $0.015, so free
+*and* paying users now pay per result row on top of per page — unlike its twin
+`Scrape-Yandex` ($0.00001). Flagged to John; an instant decrease can fix it whenever
+he chooses.
 
 ## Monitoring
 

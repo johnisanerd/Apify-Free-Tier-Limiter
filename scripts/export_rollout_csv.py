@@ -162,6 +162,33 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "requirements.txt",
         "notes": "news-lite shape: _charge returned None and never stopped. Now routed through the guard via a module-level handle and the query loop stops; a row already billed is still pushed before stopping.",
     },
+    "DfdUgh7nBLKe78irv": {
+        "github_repo": "johnisanerd/ApifyGoogleEvents",
+        "local_path": "~/Github/ApifyGoogleEvents/ApifyGoogleEvents",
+        "installed_utc": "2026-08-20",
+        "charge_event": "setup + page_processed (+ event_returned from 2026-09-01)",
+        "charge_granularity": "per page (single-page vertical)",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Verifies charged_count on all three events, so it meters with guard.record(). requirements.txt is exported from the repo-root pyproject (uv export), not hand-pinned. Null GitHub webhook - the enable script's rebuild is what deploys.",
+    },
+    "m22qEjpnfxa4H1ijE": {
+        "github_repo": "johnisanerd/ApifyGoogleScholar",
+        "local_path": "~/Github/ApifyGoogleScholar/ApifyGoogleScholar",
+        "installed_utc": "2026-08-20",
+        "charge_event": "setup + query_executed",
+        "charge_granularity": "per upstream call",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Already had its own per-RUN free-tier policy (tier_policy.py); the guard adds the per-MONTH layer on top. Meters with guard.record(); the exhausted check mirrors the existing per-run budget break at the __charge__ marker so items already billed still get stored.",
+    },
+    "bZ3PtlNaHVObbbR4O": {
+        "github_repo": "johnisanerd/ApifyGoogleLocal",
+        "local_path": "~/Github/ApifyGoogleLocal/ApifyGoogleLocal",
+        "installed_utc": "2026-08-20",
+        "charge_event": "setup + page_processed",
+        "charge_granularity": "per page",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Lives on version 0.1. page_processed was fire-and-forget (result ignored), so guard.charge() is a straight swap there; setup verifies charged_count and meters with record(). serper.dev upstream (SEARCH_API_KEY).",
+    },
 }
 
 COLUMNS = [
@@ -178,7 +205,16 @@ def token() -> str:
     try:
         return json.load(open(os.path.expanduser("~/.apify/auth.json")))["token"]
     except (OSError, KeyError):
-        sys.exit("No Apify token. Set APIFY_TOKEN or run `apify login`.")
+        pass
+    # The Apify CLI keeps its token in the OS keychain when auth.json says
+    # secretsBackend: keyring, so fall back to the fleet-tooling .env.
+    try:
+        for line in open(os.path.expanduser("~/Github/ApifyUpdate/.env")):
+            if line.startswith("APIFY_TOKEN=") and line.split("=", 1)[1].strip():
+                return line.split("=", 1)[1].strip()
+    except OSError:
+        pass
+    sys.exit("No Apify token. Set APIFY_TOKEN or run `apify login`.")
 
 
 def call(path: str) -> dict:
