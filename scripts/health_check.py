@@ -119,6 +119,14 @@ def main() -> None:
         notes = []
         if env["FREE_MAX"].get("isSecret"):
             problems.append(f"{name}: FREE_MAX is secret, so the user-facing message shows $*********")
+        # A cap with no database behind it fails SILENTLY: the guard logs one
+        # "tracking unavailable" line and goes permissive, so the Actor looks
+        # installed, the paid path still prints its line, and nothing is ever
+        # metered. jazzhr-jobs-api sat like this (URL + FREE_MAX, no KEY) until
+        # 2026-08-24 while this check reported it healthy every hour.
+        for var in ("SUPABASE_URL", "SUPABASE_KEY"):
+            if var not in env:
+                problems.append(f"{name}: {var} missing - the cap is installed but meters nothing")
         for flag in ("FREE_TIER_FORCE", "FREE_TIER_DEBUG"):
             if flag in env:
                 problems.append(f"{name}: {flag} still set"

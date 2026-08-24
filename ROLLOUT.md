@@ -45,7 +45,7 @@ variables, or a test flag left switched on.
 | `johnvc/Baidu-Search-Scraper` | `hDVd9ZQQHglV5LZ1A` | $1.00 | v0.1.7 | OK |
 | `johnvc/google-shopping-api-...` | `U02ytMsu6ynITFJHX` | $1.00 | v0.1.7 | OK |
 | `johnvc/us-congress-financial-...` | `xxCgm38ifv9HcLl9z` | $1.00 | v0.1.7 | OK |
-| `johnvc/jazzhr-jobs-api` | `Kv1kG2WbLlEvSe4Yc` | $1.00 | v0.1.7 | SUPABASE_KEY pending |
+| `johnvc/jazzhr-jobs-api` | `Kv1kG2WbLlEvSe4Yc` | $1.00 | v0.1.7 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -53,7 +53,7 @@ matches the tier-resolved price.
 
 ## What each one taught us
 
-Twenty installs, and the charge shape has differed more often than it has repeated.
+Twenty-one installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
@@ -156,6 +156,31 @@ null-webhook list.
 `POST /runs?waitForFinish=` can still read all zeros for a few seconds after the run
 succeeds. Re-fetch `GET /v2/actor-runs/<id>` (or read the log's total) before
 concluding that nothing was charged.
+
+## `jazzhr-jobs-api` — a cap that was installed and doing nothing
+
+The most useful failure so far, because everything looked right. The repo had a complete,
+correct integration (guard threaded through `_run_jobs_mode`, three per-mode charge
+events, `exhausted` checked before the terminal status, `close()` in `finally`), and the
+Actor had `FREE_MAX=1.00` and `SUPABASE_URL` set. **`SUPABASE_KEY` was never added.**
+
+With no key the guard takes the permissive path by design: one "tracking unavailable"
+line, then it goes inert. Meanwhile the *paying* path still prints "Paid Apify account
+detected" — because that check runs before the Supabase check — so every owner run
+looked perfectly healthy, and `health_check.py` reported "No problems found" every hour
+for as long as it sat there.
+
+Two fixes came out of it:
+
+- **`health_check.py` now fails on a missing `SUPABASE_URL`/`SUPABASE_KEY`.** It had only
+  ever checked for a secret `FREE_MAX` and leftover test flags; `list_installs.py` caught
+  the missing vars but is not what the monitoring loop runs. A cap with no database
+  behind it is now a reported problem, not a silent one.
+- **Verify the free path, not just the paid one.** The paid line proves the library is in
+  the image; only a forced-free run with a ledger row proves the cap actually meters.
+
+Whenever code arrives from somewhere other than the enable script — a parallel session, a
+hand edit — assume the config half is missing until the ledger says otherwise.
 
 ## Resolved 2026-08-18: per-result now meters
 

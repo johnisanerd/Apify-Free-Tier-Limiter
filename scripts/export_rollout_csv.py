@@ -189,6 +189,15 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "uv.lock",
         "notes": "Already had its own per-RUN free-tier policy (tier_policy.py); the guard adds the per-MONTH layer on top. Meters with guard.record(); the exhausted check mirrors the existing per-run budget break at the __charge__ marker so items already billed still get stored.",
     },
+    "Kv1kG2WbLlEvSe4Yc": {
+        "github_repo": "johnisanerd/ApifyJazzHR",
+        "local_path": "~/Github/ApifyJazzHR/ApifyJazzHR",
+        "installed_utc": "2026-08-24",
+        "charge_event": "job-detail + company-row + url-index-row",
+        "charge_granularity": "per row, one event per output mode",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Code landed ahead of the config: the repo had the full guard integration and FREE_MAX + SUPABASE_URL were set, but SUPABASE_KEY was never added, so the guard went permissive and metered nothing while looking healthy. Three output modes each bill their own event; guard is threaded into _run_jobs_mode as a parameter. Third Actor on version 0.1.",
+    },
     "hDVd9ZQQHglV5LZ1A": {
         "github_repo": "johnisanerd/ApifyBaidu",
         "local_path": "~/Github/ApifyBaidu/ApifyBaidu",
