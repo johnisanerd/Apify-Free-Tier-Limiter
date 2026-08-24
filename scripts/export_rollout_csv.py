@@ -36,6 +36,15 @@ DEFAULT_OUT = Path.home() / "Desktop" / "Apify" / "free-tier-limiter-rollout.csv
 # One entry per migrated Actor. Everything here is a fact about the integration
 # that the Apify API cannot tell us.
 INTEGRATIONS = {
+    "Kv1kG2WbLlEvSe4Yc": {
+        "github_repo": "johnisanerd/ApifyJazzHR",
+        "local_path": "~/Github/ApifyJazzHR/ApifyJazzHR",
+        "installed_utc": "2026-08-24",
+        "charge_event": "job-detail, url-index-row, company-row",
+        "charge_granularity": "per row",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "First install on a brand-new Actor, done during its launch rather than as a retrofit. Three charge events because the three output modes cost very differently; all three route through guard.charge. Per-row charging means the overshoot bound is one row per concurrent worker, the tightest shape so far.",
+    },
     "WzsyD0afch5fKHGn5": {
         "github_repo": "johnisanerd/ApifyApifyScraper",
         "local_path": "~/Github/ApifyApifyScraper/ApifyApifyScraper",

@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (20 of 103 Actors, as of 2026-08-24)
+## Enabled (21 of 104 Actors, as of 2026-08-24)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -45,6 +45,7 @@ variables, or a test flag left switched on.
 | `johnvc/Baidu-Search-Scraper` | `hDVd9ZQQHglV5LZ1A` | $1.00 | v0.1.7 | OK |
 | `johnvc/google-shopping-api-...` | `U02ytMsu6ynITFJHX` | $1.00 | v0.1.7 | OK |
 | `johnvc/us-congress-financial-...` | `xxCgm38ifv9HcLl9z` | $1.00 | v0.1.7 | OK |
+| `johnvc/jazzhr-jobs-api` | `Kv1kG2WbLlEvSe4Yc` | $1.00 | v0.1.7 | SUPABASE_KEY pending |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
