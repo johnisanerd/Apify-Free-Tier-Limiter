@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (17 of 103 Actors, as of 2026-08-20)
+## Enabled (20 of 103 Actors, as of 2026-08-24)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -42,6 +42,9 @@ variables, or a test flag left switched on.
 | `johnvc/google-events-api-...` | `DfdUgh7nBLKe78irv` | $1.00 | v0.1.7 | OK |
 | `johnvc/google-scholar-api` | `m22qEjpnfxa4H1ijE` | $1.00 | v0.1.7 | OK |
 | `johnvc/google-local-api` | `bZ3PtlNaHVObbbR4O` | $1.00 | v0.1.7 | OK |
+| `johnvc/Baidu-Search-Scraper` | `hDVd9ZQQHglV5LZ1A` | $1.00 | v0.1.7 | OK |
+| `johnvc/google-shopping-api-...` | `U02ytMsu6ynITFJHX` | $1.00 | v0.1.7 | OK |
+| `johnvc/us-congress-financial-...` | `xxCgm38ifv9HcLl9z` | $1.00 | v0.1.7 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -49,8 +52,9 @@ matches the tier-resolved price.
 
 ## What each one taught us
 
-Eleven installs, and no two Actors have had the same charge shape until the eleventh.
-Check the shape before you start.
+Twenty installs, and the charge shape has differed more often than it has repeated.
+Check the shape before you start — the two questions that decide the whole integration
+are in [Choosing the next Actors](#choosing-the-next-actors).
 
 **`store-actor-intelligence-api`** (pilot) — the common fleet shape: a local
 `_charge(event, count) -> bool` helper, batch charging after `push_data`. One-line swap.
@@ -122,6 +126,35 @@ the `__charge__` marker, so items a free user was already billed for still get s
 **`google-local-api`** — `page_processed` was fire-and-forget (`Actor.charge` result
 ignored), which makes `guard.charge()` a straight swap at that site; `setup` verifies
 `charged_count` and meters with `record()`. Second Actor on version 0.1.
+
+## The pre-charge family (Baidu, google-shopping, us-congress)
+
+These three share a shape the first seventeen never had: they charge **setup plus the
+entire expected batch up front**, before any upstream call, then do the work. There is
+no per-item charge site to hook, and more importantly no useful place to stop — by the
+time the guard could act, the user has already paid for the whole run.
+
+So enforcement moves to the door. `guard.blocked` at `start()` turns away a free user
+who is already over the allowance, before a single cent is charged; the pre-charges are
+metered with `record()` and the return value is **deliberately ignored**, so a run that
+gets past the door always finishes and delivers what it billed for. The allowance stop
+lands on that user's *next* run.
+
+The tradeoff is a slightly larger overshoot bound: one full run rather than one charge.
+Worst case is small — Baidu $0.012 + 3 x $0.02, congress $0.001 + N x $0.0019 — and
+this is the honest direction to err, since the alternative bills a user for pages they
+never receive.
+
+Per-Actor notes: **shopping** only meters `setup` when `charged_count == 1` (it
+deliberately continues unbilled in dev mode) and meters the pages actually billed
+rather than the number requested. **congress** keeps its source in
+`ApifyCongressFinancialData/`, not a directory matching the repo name, and is on the
+null-webhook list.
+
+**Gotcha found here:** `chargedEventCounts` on the run object returned by
+`POST /runs?waitForFinish=` can still read all zeros for a few seconds after the run
+succeeds. Re-fetch `GET /v2/actor-runs/<id>` (or read the log's total) before
+concluding that nothing was charged.
 
 ## Resolved 2026-08-18: per-result now meters
 
