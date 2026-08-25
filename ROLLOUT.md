@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (23 of 104 Actors, as of 2026-08-25)
+## Enabled (24 of 104 Actors, as of 2026-08-25)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -48,6 +48,7 @@ variables, or a test flag left switched on.
 | `johnvc/jazzhr-jobs-api` | `Kv1kG2WbLlEvSe4Yc` | $1.00 | v0.1.7 | OK |
 | `johnvc/naver-search-api` | `j4OJsjSUT8rK1REX6` | $1.00 | v0.1.7 | OK |
 | `johnvc/naver-ai-overview-api` | `fKI5Ckh8aKOioEU1U` | $1.00 | v0.1.7 | OK |
+| `johnvc/ApifyGreenhouse` (private) | `X3nud8oqPjzaV92oQ` | $1.00 | v0.1.8 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -55,7 +56,7 @@ matches the tier-resolved price.
 
 ## What each one taught us
 
-Twenty-three installs, and the charge shape has differed more often than it has repeated.
+Twenty-four installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
@@ -210,6 +211,26 @@ python3 scripts/health_check.py --hours 3
 Checks every capped Actor for a secret `FREE_MAX`, a test flag left on, guard warnings in
 recent runs, failed runs, and Actors where the guard never spoke. Exits non-zero when
 something needs attention, so it can drive a cron.
+
+## `ApifyGreenhouse` — the first one capped before launch
+
+Every other install has been a retrofit onto an Actor already serving free users. This one
+was capped while still **private, with zero public runs**, so no free account ever reached
+it uncapped. That is the cheapest possible moment to do it: no backfill, no users already
+mid-month, nothing to explain.
+
+Two things specific to it:
+
+- **Eight charge events**, the most in the fleet. A base row event per output mode, plus
+  description add-ons (markdown/html/text) and questions that *stack on the same row*
+  through `_charge_row()`, plus a once-per-run report event. The guard sits inside that
+  helper, so every add-on is metered without touching individual call sites.
+- **It pins library v0.1.8, not v0.1.7** like the rest of the fleet, because it runs
+  Apify SDK 4 where `Actor.charge` takes `count` as keyword-only. Anything else moving to
+  SDK 4 needs the same bump.
+
+Measured on a real run: 100 jobs with markdown descriptions cost $0.1469, about
+**$0.00147 per job**, so $1.00 buys a free user roughly 680 jobs a month.
 
 ## Rank candidates by runs, not just users
 

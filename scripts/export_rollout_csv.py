@@ -180,6 +180,15 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "uv.lock",
         "notes": "Already had its own per-RUN free-tier policy (tier_policy.py); the guard adds the per-MONTH layer on top. Meters with guard.record(); the exhausted check mirrors the existing per-run budget break at the __charge__ marker so items already billed still get stored.",
     },
+    "X3nud8oqPjzaV92oQ": {
+        "github_repo": "johnisanerd/ApifyGreenhouse",
+        "local_path": "~/Github/ApifyGreenhouse/ApifyGreenhouse",
+        "installed_utc": "2026-08-25",
+        "charge_event": "job-result + 3 description add-ons + job-questions + company-row + url-index-row + run-report",
+        "charge_granularity": "per row, add-ons stack per row",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Capped BEFORE launch - still private with zero public runs, so no free user ever ran it uncapped. Eight charge events, the most in the fleet; add-ons stack on top of the base row event via _charge_row(). Pinned to library v0.1.8 (rest of the fleet is on v0.1.7) because it runs Apify SDK 4, where Actor.charge takes count as keyword-only. Measured cost ~$0.00147/job with markdown on, so $1.00 is roughly 680 jobs a month.",
+    },
     "j4OJsjSUT8rK1REX6": {
         "github_repo": "johnisanerd/ApifyNaver",
         "local_path": "~/Github/ApifyNaver/ApifyNaver",
