@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (21 of 104 Actors, as of 2026-08-24)
+## Enabled (23 of 104 Actors, as of 2026-08-25)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -46,6 +46,8 @@ variables, or a test flag left switched on.
 | `johnvc/google-shopping-api-...` | `U02ytMsu6ynITFJHX` | $1.00 | v0.1.7 | OK |
 | `johnvc/us-congress-financial-...` | `xxCgm38ifv9HcLl9z` | $1.00 | v0.1.7 | OK |
 | `johnvc/jazzhr-jobs-api` | `Kv1kG2WbLlEvSe4Yc` | $1.00 | v0.1.7 | OK |
+| `johnvc/naver-search-api` | `j4OJsjSUT8rK1REX6` | $1.00 | v0.1.7 | OK |
+| `johnvc/naver-ai-overview-api` | `fKI5Ckh8aKOioEU1U` | $1.00 | v0.1.7 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -53,7 +55,7 @@ matches the tier-resolved price.
 
 ## What each one taught us
 
-Twenty-one installs, and the charge shape has differed more often than it has repeated.
+Twenty-three installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
@@ -208,6 +210,18 @@ python3 scripts/health_check.py --hours 3
 Checks every capped Actor for a secret `FREE_MAX`, a test flag left on, guard warnings in
 recent runs, failed runs, and Actors where the guard never spoke. Exits non-zero when
 something needs attention, so it can drive a cron.
+
+## Rank candidates by runs, not just users
+
+`naver-ai-overview-api` was missed twice by a shortlist ordered on 30-day *users*. It has
+only 10 free users — but **1,321 runs a month**, more than Baidu, google-shopping and
+us-congress combined, every one of them a paid upstream call. A handful of accounts
+automating hard is exactly the profile the cap exists for, and user count hides it.
+
+Sort candidates by `runs30 x upstream cost per run`, and treat a high runs-per-user ratio
+as its own signal. Both Naver Actors were also the *easiest* shape in the fleet (one
+`_charge` helper, one call inside it), so the two together took less work than any single
+install that week — cheap to do, and they had been running uncapped the whole time.
 
 ## Choosing the next Actors
 

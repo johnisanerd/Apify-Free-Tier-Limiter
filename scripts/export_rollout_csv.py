@@ -36,15 +36,6 @@ DEFAULT_OUT = Path.home() / "Desktop" / "Apify" / "free-tier-limiter-rollout.csv
 # One entry per migrated Actor. Everything here is a fact about the integration
 # that the Apify API cannot tell us.
 INTEGRATIONS = {
-    "Kv1kG2WbLlEvSe4Yc": {
-        "github_repo": "johnisanerd/ApifyJazzHR",
-        "local_path": "~/Github/ApifyJazzHR/ApifyJazzHR",
-        "installed_utc": "2026-08-24",
-        "charge_event": "job-detail, url-index-row, company-row",
-        "charge_granularity": "per row",
-        "dockerfile_installs_from": "uv.lock",
-        "notes": "First install on a brand-new Actor, done during its launch rather than as a retrofit. Three charge events because the three output modes cost very differently; all three route through guard.charge. Per-row charging means the overshoot bound is one row per concurrent worker, the tightest shape so far.",
-    },
     "WzsyD0afch5fKHGn5": {
         "github_repo": "johnisanerd/ApifyApifyScraper",
         "local_path": "~/Github/ApifyApifyScraper/ApifyApifyScraper",
@@ -189,6 +180,24 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "uv.lock",
         "notes": "Already had its own per-RUN free-tier policy (tier_policy.py); the guard adds the per-MONTH layer on top. Meters with guard.record(); the exhausted check mirrors the existing per-run budget break at the __charge__ marker so items already billed still get stored.",
     },
+    "j4OJsjSUT8rK1REX6": {
+        "github_repo": "johnisanerd/ApifyNaver",
+        "local_path": "~/Github/ApifyNaver/ApifyNaver",
+        "installed_utc": "2026-08-25",
+        "charge_event": "actor_start + result_scraped",
+        "charge_granularity": "per result",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Original fleet shape - a single _charge(event, count) -> bool helper wrapping one Actor.charge, no charged_count check - so the guard routes through that helper via a module-level handle and both call sites are covered by one change. The done-summary status message is skipped when guard.exhausted so it cannot clobber the allowance explanation.",
+    },
+    "fKI5Ckh8aKOioEU1U": {
+        "github_repo": "johnisanerd/ApifyNaverAIOverview",
+        "local_path": "~/Github/ApifyNaverAIOverview/ApifyNaverAIOverview",
+        "installed_utc": "2026-08-25",
+        "charge_event": "ai_overview_queried",
+        "charge_granularity": "per query",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Same single-helper shape; its existing limit_reached stop logic works unchanged once _charge routes through the guard. Its _finish_due_to_budget message ('raise your run budget') is wrong advice for a spent monthly allowance, so it is suppressed when guard.exhausted. Found by ranking candidates on RUNS not users: 10 free users but 1,321 runs/30d.",
+    },
     "Kv1kG2WbLlEvSe4Yc": {
         "github_repo": "johnisanerd/ApifyJazzHR",
         "local_path": "~/Github/ApifyJazzHR/ApifyJazzHR",
@@ -196,7 +205,7 @@ INTEGRATIONS = {
         "charge_event": "job-detail + company-row + url-index-row",
         "charge_granularity": "per row, one event per output mode",
         "dockerfile_installs_from": "uv.lock",
-        "notes": "Code landed ahead of the config: the repo had the full guard integration and FREE_MAX + SUPABASE_URL were set, but SUPABASE_KEY was never added, so the guard went permissive and metered nothing while looking healthy. Three output modes each bill their own event; guard is threaded into _run_jobs_mode as a parameter. Third Actor on version 0.1.",
+        "notes": "Code landed ahead of the config: the repo had the full guard integration and FREE_MAX + SUPABASE_URL were set, but SUPABASE_KEY was never added, so the guard went permissive and metered nothing while looking healthy. Three output modes each bill their own event (they cost very differently); guard is threaded into _run_jobs_mode as a parameter. Per-row charging makes the overshoot bound one row per concurrent worker, the tightest shape so far. Third Actor on version 0.1.",
     },
     "hDVd9ZQQHglV5LZ1A": {
         "github_repo": "johnisanerd/ApifyBaidu",
