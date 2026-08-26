@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (24 of 104 Actors, as of 2026-08-25)
+## Enabled (25 of 104 Actors, as of 2026-08-26)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -48,15 +48,18 @@ variables, or a test flag left switched on.
 | `johnvc/jazzhr-jobs-api` | `Kv1kG2WbLlEvSe4Yc` | $1.00 | v0.1.7 | OK |
 | `johnvc/naver-search-api` | `j4OJsjSUT8rK1REX6` | $1.00 | v0.1.7 | OK |
 | `johnvc/naver-ai-overview-api` | `fKI5Ckh8aKOioEU1U` | $1.00 | v0.1.7 | OK |
-| `johnvc/ApifyGreenhouse` (private) | `X3nud8oqPjzaV92oQ` | $1.00 | v0.1.8 | OK |
+| `johnvc/ApifyGreenhouse` | `X3nud8oqPjzaV92oQ` | $1.00 | v0.1.8 | OK |
+| `johnvc/ApifyAshby` (private) | `H9ZkYEGh5gSvAVSXT` | $1.00 | v0.1.8 | installed; dormant until priced |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
-matches the tier-resolved price.
+matches the tier-resolved price. **One exception:** `ApifyAshby` has no pay-per-event
+pricing yet, so its free path can only be verified as far as the guard's no-prices line -
+it writes no ledger row until the Actor is priced. See its section below.
 
 ## What each one taught us
 
-Twenty-four installs, and the charge shape has differed more often than it has repeated.
+Twenty-five installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
@@ -231,6 +234,29 @@ Two things specific to it:
 
 Measured on a real run: 100 jobs with markdown descriptions cost $0.1469, about
 **$0.00147 per job**, so $1.00 buys a free user roughly 680 jobs a month.
+
+## `ApifyAshby` — installed, but dormant until the Actor is priced
+
+A Greenhouse-pattern clone, capped the same way and at the same pre-launch moment: private,
+zero runs, nothing to backfill. The guard is integrated, the variables are set, and both
+paths were exercised on-platform.
+
+It does **not** meter yet, and that is correct rather than broken. The Actor has no
+`PAY_PER_EVENT` pricing configured, so `get_pricing_info()` reports no per-event prices,
+and the guard says so plainly and goes inert:
+
+    Free-tier usage tracking is configured, but this run reports no pay-per-event
+    prices, so there is nothing to meter.
+
+That line is deliberately in `GUARD_ALIVE`, not `WARNING_SIGNS` — the health check counts
+it as the guard working, so it produces no false alarm. Prices are read at runtime on
+every `start()`, so the cap begins metering on its own the first run after pricing is
+configured; **no rebuild is needed**. Re-verify with a forced-free run at that point,
+since a paid-path line alone never proves metering.
+
+Greenhouse showed the other side of this within minutes: its pricing (8 events) landed at
+16:23 on 2026-08-25, moments before its forced-free run, which is why that one metered
+$0.1469 immediately while this one does not.
 
 ## Rank candidates by runs, not just users
 

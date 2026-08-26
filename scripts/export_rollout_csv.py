@@ -180,6 +180,15 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "uv.lock",
         "notes": "Already had its own per-RUN free-tier policy (tier_policy.py); the guard adds the per-MONTH layer on top. Meters with guard.record(); the exhausted check mirrors the existing per-run budget break at the __charge__ marker so items already billed still get stored.",
     },
+    "H9ZkYEGh5gSvAVSXT": {
+        "github_repo": "johnisanerd/ApifyAshby",
+        "local_path": "~/Github/ApifyAshby/ApifyAshby",
+        "installed_utc": "2026-08-26",
+        "charge_event": "job-result + description add-ons + company-row + url-index-row + run-report",
+        "charge_granularity": "per row, add-ons stack per row",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Greenhouse-pattern clone (same _charge_row add-on stacking), pinned to library v0.1.8 because it runs Apify SDK 4. Capped pre-launch while still private with 0 runs. DORMANT until the Actor is priced: with no PAY_PER_EVENT pricing the guard reads no prices and logs the no-prices line instead of metering. It picks prices up at runtime with no rebuild once pricing is set - re-verify with a forced-free run then.",
+    },
     "X3nud8oqPjzaV92oQ": {
         "github_repo": "johnisanerd/ApifyGreenhouse",
         "local_path": "~/Github/ApifyGreenhouse/ApifyGreenhouse",
