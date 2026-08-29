@@ -180,6 +180,15 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "uv.lock",
         "notes": "Already had its own per-RUN free-tier policy (tier_policy.py); the guard adds the per-MONTH layer on top. Meters with guard.record(); the exhausted check mirrors the existing per-run budget break at the __charge__ marker so items already billed still get stored.",
     },
+    "K57owi8nOaCWbnGQM": {
+        "github_repo": "johnisanerd/ApifyLinkedInPeople",
+        "local_path": "~/Github/ApifyLinkedInPeople/ApifyLinkedInPeople",
+        "installed_utc": "2026-08-29",
+        "charge_event": "person-found + person-enriched",
+        "charge_granularity": "per profile, enrichment stacks on the same profile",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "First install on SDK 4 that needed the code written (Greenhouse/Ashby arrived pre-integrated), so it is the reference for the v0.1.8 pin: Actor.charge takes count as keyword-only there. Original single-_charge-helper shape, routed via a module-level handle. Capped pre-launch while private. Measured $0.000297/profile found, so $1.00 is ~3,300 profiles a month, or ~1,100 with enrichment on.",
+    },
     "H9ZkYEGh5gSvAVSXT": {
         "github_repo": "johnisanerd/ApifyAshby",
         "local_path": "~/Github/ApifyAshby/ApifyAshby",

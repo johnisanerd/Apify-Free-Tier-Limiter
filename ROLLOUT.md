@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (25 of 104 Actors, as of 2026-08-26)
+## Enabled (26 of 104 Actors, as of 2026-08-29)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -50,6 +50,7 @@ variables, or a test flag left switched on.
 | `johnvc/naver-ai-overview-api` | `fKI5Ckh8aKOioEU1U` | $1.00 | v0.1.7 | OK |
 | `johnvc/ApifyGreenhouse` | `X3nud8oqPjzaV92oQ` | $1.00 | v0.1.8 | OK |
 | `johnvc/ApifyAshby` (private) | `H9ZkYEGh5gSvAVSXT` | $1.00 | v0.1.8 | installed; dormant until priced |
+| `johnvc/linkedin-people-search-api` (private) | `K57owi8nOaCWbnGQM` | $1.00 | v0.1.8 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -59,7 +60,7 @@ it writes no ledger row until the Actor is priced. See its section below.
 
 ## What each one taught us
 
-Twenty-five installs, and the charge shape has differed more often than it has repeated.
+Twenty-six installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
@@ -257,6 +258,25 @@ since a paid-path line alone never proves metering.
 Greenhouse showed the other side of this within minutes: its pricing (8 events) landed at
 16:23 on 2026-08-25, moments before its forced-free run, which is why that one metered
 $0.1469 immediately while this one does not.
+
+## `linkedin-people-search-api` — SDK 4, code written by hand
+
+The third pre-launch install, and the first on **Apify SDK 4** where the integration had
+to be written rather than arriving already done (Greenhouse and Ashby came pre-integrated
+from their builds). That makes it the reference for the v0.1.8 pin: on SDK 4
+`Actor.charge` takes `count` as **keyword-only**, and library v0.1.7 calls it
+positionally, so a v0.1.7 pin here would break every charge. Check the `apify` bound in
+pyproject before choosing the tag — `>=4.0` means v0.1.8.
+
+The shape itself was the easy one: a single `_charge(event, count) -> bool` helper with
+both call sites inside it, so a module-level handle covered everything. Two early returns
+sit after the guard starts (unpriced-event bail-out and the no-proxy bail-out) and both
+now flush with `close()`, and the run summary is skipped when `guard.exhausted` so it
+cannot overwrite the allowance explanation.
+
+Measured on a real run: **$0.000297 per profile found**, so $1.00 is roughly 3,300
+profiles a month, or about 1,100 with `enrichProfiles` on (found + enriched stack on the
+same profile).
 
 ## Rank candidates by runs, not just users
 
