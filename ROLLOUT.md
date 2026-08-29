@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (26 of 104 Actors, as of 2026-08-29)
+## Enabled (27 of 104 Actors, as of 2026-08-29)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -51,6 +51,7 @@ variables, or a test flag left switched on.
 | `johnvc/ApifyGreenhouse` | `X3nud8oqPjzaV92oQ` | $1.00 | v0.1.8 | OK |
 | `johnvc/ApifyAshby` (private) | `H9ZkYEGh5gSvAVSXT` | $1.00 | v0.1.8 | installed; dormant until priced |
 | `johnvc/linkedin-people-search-api` (private) | `K57owi8nOaCWbnGQM` | $1.00 | v0.1.8 | OK |
+| `johnvc/linkedin-company-api` | `UhJGmp1YJmNidr7h1` | $1.00 | v0.1.8 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -60,7 +61,7 @@ it writes no ledger row until the Actor is priced. See its section below.
 
 ## What each one taught us
 
-Twenty-six installs, and the charge shape has differed more often than it has repeated.
+Twenty-seven installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
@@ -277,6 +278,36 @@ cannot overwrite the allowance explanation.
 Measured on a real run: **$0.000297 per profile found**, so $1.00 is roughly 3,300
 profiles a month, or about 1,100 with `enrichProfiles` on (found + enriched stack on the
 same profile).
+
+## `linkedin-company-api` — the second half-installed cap
+
+The same failure shape as `jazzhr-jobs-api`, found the same way: the guard was fully
+integrated in code **and already deployed** (build 0.0.52), but no Supabase variables and
+no `FREE_MAX` were ever set on the Actor, so it kept serving real public free traffic
+(12 free users, 144 runs in 30 days) completely uncapped. Code landing is not the install.
+
+It is also the only Actor with a **defensive import fallback**:
+
+```python
+try:
+    from apify_free_tier import FreeTierGuard
+except ImportError:      # library absent in a local/dev interpreter
+    FreeTierGuard = None
+...
+guard = await FreeTierGuard.start() if FreeTierGuard is not None else _NullGuard()
+```
+
+`_NullGuard` delegates to the Actor's own `_charge` and never blocks, which is right for a
+local run. The catch is on-platform: if the library ever failed to install, there would be
+no `ModuleNotFoundError` in the log — the run would look normal and meter nothing. What
+catches that is `health_check.py`'s "runs but the guard never spoke" rule, since
+`_NullGuard` logs none of the `GUARD_ALIVE` lines. So when verifying an Actor built this
+way, the guard's own log line is the thing that proves the real library loaded.
+
+Note it runs SDK 3 (`apify>=3.4,<4`) while pinned to library v0.1.8 — verified fine, since
+`Actor.charge(event, count=...)` is valid on both. v0.1.8 is not SDK-4-only.
+
+Measured: **$0.00495 per company**, so $1.00 is roughly 200 companies a month.
 
 ## Rank candidates by runs, not just users
 

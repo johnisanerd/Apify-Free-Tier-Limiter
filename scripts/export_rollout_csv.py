@@ -180,6 +180,15 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "uv.lock",
         "notes": "Already had its own per-RUN free-tier policy (tier_policy.py); the guard adds the per-MONTH layer on top. Meters with guard.record(); the exhausted check mirrors the existing per-run budget break at the __charge__ marker so items already billed still get stored.",
     },
+    "UhJGmp1YJmNidr7h1": {
+        "github_repo": "johnisanerd/ApifyLinkedInCompany",
+        "local_path": "~/Github/ApifyLinkedInCompany/ApifyLinkedInCompany",
+        "installed_utc": "2026-08-29",
+        "charge_event": "company-scraped + company-searched",
+        "charge_granularity": "per company; the search event fires only when resolving a name",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Code arrived pre-integrated and already deployed (build 0.0.52) but the env vars were never set, so it ran uncapped with real public traffic. Only Actor so far with a try/except import fallback to a local _NullGuard for dev; on-platform the guard's own log line is what proves the real library loaded rather than the shim. On SDK 3 yet pinned to v0.1.8, which works fine. Measured $0.00495/company, so $1.00 is about 200 companies a month.",
+    },
     "K57owi8nOaCWbnGQM": {
         "github_repo": "johnisanerd/ApifyLinkedInPeople",
         "local_path": "~/Github/ApifyLinkedInPeople/ApifyLinkedInPeople",
