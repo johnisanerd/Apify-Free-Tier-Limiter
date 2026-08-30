@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (27 of 104 Actors, as of 2026-08-29)
+## Enabled (28 of 104 Actors, as of 2026-08-30)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -52,16 +52,18 @@ variables, or a test flag left switched on.
 | `johnvc/ApifyAshby` (private) | `H9ZkYEGh5gSvAVSXT` | $1.00 | v0.1.8 | installed; dormant until priced |
 | `johnvc/linkedin-people-search-api` (private) | `K57owi8nOaCWbnGQM` | $1.00 | v0.1.8 | OK |
 | `johnvc/linkedin-company-api` | `UhJGmp1YJmNidr7h1` | $1.00 | v0.1.8 | OK |
+| `johnvc/linkedin-job-search-scraper` (private) | `pKIcPdH1zYxQBowJa` | $1.00 | v0.1.8 | installed; dormant until priced |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
-matches the tier-resolved price. **One exception:** `ApifyAshby` has no pay-per-event
-pricing yet, so its free path can only be verified as far as the guard's no-prices line -
-it writes no ledger row until the Actor is priced. See its section below.
+matches the tier-resolved price. **Two exceptions:** `ApifyAshby` and
+`linkedin-job-search-scraper` have no pay-per-event pricing yet, so their free path can
+only be verified as far as the guard's no-prices line - neither writes a ledger row until
+the Actor is priced. Re-verify each with a forced-free run once pricing is set.
 
 ## What each one taught us
 
-Twenty-seven installs, and the charge shape has differed more often than it has repeated.
+Twenty-eight installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
@@ -308,6 +310,28 @@ Note it runs SDK 3 (`apify>=3.4,<4`) while pinned to library v0.1.8 — verified
 `Actor.charge(event, count=...)` is valid on both. v0.1.8 is not SDK-4-only.
 
 Measured: **$0.00495 per company**, so $1.00 is roughly 200 companies a month.
+
+## Finding caps that were never configured
+
+Twice now the code half of an install has landed without the config half: the guard is
+committed, the build ships it, and nobody sets the variables - so the Actor serves free
+users uncapped while every log line looks healthy. `jazzhr-jobs-api` sat that way until
+John asked about it; `linkedin-company-api` sat that way with **real public traffic**
+(12 free users, 144 runs in 30 days).
+
+Neither audit could see it. `list_installs.py` and `health_check.py` both start by
+scanning for `FREE_MAX`, and an Actor in this state has no `FREE_MAX` to find. So the
+check now comes from the other direction - match each Actor's `gitRepoUrl` to its local
+checkout, grep for the library import, and report any that import it without the
+variables set:
+
+```bash
+python3 scripts/list_installs.py --find-unconfigured
+```
+
+It exits non-zero when it finds one. Running it after this rollout turned up
+`linkedin-job-search-scraper`, private with 5 runs - caught before publication rather than
+after. **Run it after any launch where the Actor was built with the guard already in it.**
 
 ## Rank candidates by runs, not just users
 

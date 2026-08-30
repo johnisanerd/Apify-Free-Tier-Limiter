@@ -7,9 +7,17 @@ flags the two misconfigurations that make an install look fine but behave
 wrongly: a secret FREE_MAX (redacted out of the user-facing message) and test
 flags left switched on (FREE_TIER_FORCE meters paying customers).
 
+There is a third failure this cannot see by scanning FREE_MAX alone, because such an
+Actor has no FREE_MAX to find: the guard code is committed and deployed, but the
+variables were never set, so the Actor runs uncapped while the repo looks done.
+That has happened twice (jazzhr-jobs-api, linkedin-company-api, the latter with real
+public traffic). `--find-unconfigured` catches it by matching each Actor's git repo
+against its local checkout and reporting any that import the library with no FREE_MAX.
+
 Usage:
     python3 scripts/list_installs.py
-    python3 scripts/list_installs.py --markdown     # table for ROLLOUT.md
+    python3 scripts/list_installs.py --markdown            # table for ROLLOUT.md
+    python3 scripts/list_installs.py --find-unconfigured   # guard in code, never configured
 
 Reads the Apify token from APIFY_TOKEN, or from ~/.apify/auth.json.
 """
@@ -18,6 +26,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -77,10 +87,63 @@ def scan() -> list[dict]:
     return installs
 
 
+def find_unconfigured() -> list[dict]:
+    """Actors whose repo imports the library but which have no FREE_MAX set.
+
+    The code half of the install can land without the config half - a build
+    deploys the guard, nobody sets the variables, and the Actor serves free
+    users uncapped while every log line looks healthy. Matches each Actor's
+    gitRepoUrl to a local checkout under ~/Github and greps it.
+    """
+    found = []
+    for actor in call("/acts?limit=1000&desc=1")["items"]:
+        detail = call(f"/acts/{actor['id']}")
+        versions = detail.get("versions") or []
+        if not versions:
+            continue
+        env = {e["name"] for e in (versions[0].get("envVars") or [])}
+        if "FREE_MAX" in env:
+            continue
+        match = re.search(r"[:/]([^/:]+)/([^/.]+)\.git", versions[0].get("gitRepoUrl") or "")
+        if not match:
+            continue
+        path = os.path.expanduser(f"~/Github/{match.group(2)}")
+        if not os.path.isdir(path):
+            continue
+        hit = subprocess.run(
+            ["grep", "-rl", "apify_free_tier", path, "--include=*.py"],
+            capture_output=True, text=True,
+        ).stdout.strip()
+        if hit:
+            stats = detail.get("stats", {})
+            found.append({
+                "actor": f"{actor['username']}/{actor['name']}",
+                "id": actor["id"],
+                "repo": match.group(2),
+                "public": detail.get("isPublic"),
+                "users30": stats.get("totalUsers30Days"),
+            })
+    return found
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--markdown", action="store_true", help="Emit a Markdown table")
+    ap.add_argument("--find-unconfigured", action="store_true",
+                    help="Report Actors whose code has the guard but no FREE_MAX set")
     args = ap.parse_args()
+
+    if args.find_unconfigured:
+        rows = find_unconfigured()
+        for r in rows:
+            flag = "PUBLIC" if r["public"] else "private"
+            print(f"{r['actor']:45} {r['id']}  {flag}  users30={r['users30']}  repo={r['repo']}")
+        if rows:
+            print(f"\n{len(rows)} Actor(s) import the library but have no FREE_MAX set - "
+                  f"they run uncapped.", file=sys.stderr)
+            sys.exit(1)
+        print("No Actor has the guard in code without the variables set.", file=sys.stderr)
+        return
 
     installs = scan()
 
