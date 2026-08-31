@@ -57,11 +57,11 @@ INTEGRATIONS = {
     "zPumutvB61fpEsglh": {
         "github_repo": "johnisanerd/ApifyYoutubeTranscripts",
         "local_path": "~/Github/ApifyYoutubeTranscripts/ApifyYoutubeTranscript",
-        "installed_utc": "2026-08-11",
+        "installed_utc": "2026-08-31",
         "charge_event": "videoprocessed",
         "charge_granularity": "per item",
         "dockerfile_installs_from": "uv.lock",
-        "notes": "Fully parallel via asyncio.gather; stopping needs an Event checked after the semaphore. Versions 0.0 and 0.5 both tagged latest; 0.0 builds.",
+        "notes": "Fully parallel via asyncio.gather; stopping needs an Event checked after the semaphore. Versions 0.0 and 0.5 both tagged latest; 0.0 builds. CAP LOST AND RESTORED 2026-08-31: version 0.0 (which carried the cap) was removed and v0.5 became the only version, having never had the variables - the Actor ran uncapped until re-enabled on build 0.5.21. installed_utc is the RE-install date on purpose, because every v0.5 build before it lacks FREE_MAX and is prunable.",
     },
     "WQbrHYgrJV5fP6b09": {
         "github_repo": "johnisanerd/ApifyGoogleMaps",
