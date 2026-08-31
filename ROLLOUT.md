@@ -333,6 +333,29 @@ It exits non-zero when it finds one. Running it after this rollout turned up
 `linkedin-job-search-scraper`, private with 5 runs - caught before publication rather than
 after. **Run it after any launch where the Actor was built with the guard already in it.**
 
+## A cap can vanish after it was installed
+
+`YoutubeTranscripts` carried the cap on version **0.0**. Someone removed that version,
+v0.5 became the only one — and v0.5 had never had the variables. The fleet's busiest
+Actor (~48k runs/30d, 1,500 free users) served free users uncapped, and **nothing
+reported a problem**, because every check started by scanning for `FREE_MAX` and an
+Actor without it simply drops out of the report.
+
+`health_check.py` now runs that check from the opposite direction: it asks which Actors
+*should* be capped, using the INTEGRATIONS table as the record, and fails on any that no
+longer are. It also fails when an INTEGRATIONS entry points at an Actor the API will not
+return, which catches a deletion or rename. If you remove a cap on purpose, add
+`"cap_removed_utc"` to that entry and the check goes quiet for it.
+
+Two related things this case taught:
+
+- **Deleting a version does not delete its builds.** 83 v0.0 builds were still there and
+  still pinnable after the version was gone. Removing a version is not a safety measure.
+- **The install date in INTEGRATIONS must be the date the cap was last actually set.**
+  YoutubeTranscripts still read `2026-08-11` from the original v0.0 install, so a prune
+  against that date would have spared all 16 v0.5 builds — every one of them uncapped.
+  It now reads the re-install date, with a note saying why.
+
 ## Stale builds are a live bypass
 
 Environment variables are baked into the build image at build time, so a build made

@@ -1,16 +1,27 @@
 #!/usr/bin/env python3
 """Health check across every Actor that has the free-tier cap enabled.
 
-Answers the question "is the cap misbehaving anywhere?" in one command. Three
+Answers the question "is the cap misbehaving anywhere?" in one command. Four
 things it looks for, in order of how much they matter:
 
-1. Config that looks fine but is not - a secret FREE_MAX (redacted out of the
-   user-facing message) or a test flag left on (FREE_TIER_FORCE meters paying
-   customers).
-2. Guard warnings in recent runs: tracking unavailable, an event with no
+1. A cap that has DISAPPEARED - an Actor listed in INTEGRATIONS that no longer
+   has FREE_MAX. This one is checked from the opposite direction to the rest,
+   because every other check starts by scanning for FREE_MAX, so an Actor that
+   loses its cap silently drops out of the report entirely rather than failing
+   it. That is not hypothetical: YoutubeTranscripts carried the cap on version
+   0.0, someone removed that version, v0.5 became the only one and had never
+   had the variables - and the fleet's busiest Actor (~48k runs/30d) served
+   free users uncapped with nothing reporting a problem.
+2. Config that looks fine but is not - a secret FREE_MAX (redacted out of the
+   user-facing message), missing Supabase variables, or a test flag left on
+   (FREE_TIER_FORCE meters paying customers).
+3. Guard warnings in recent runs: tracking unavailable, an event with no
    readable price, the circuit breaker, or an unhandled traceback.
-3. Whether the guard is silent on an opted-in Actor, which means it is not
+4. Whether the guard is silent on an opted-in Actor, which means it is not
    running at all.
+
+If a cap is removed deliberately, add a "cap_removed_utc" field to that Actor's
+INTEGRATIONS entry and check 1 will stop flagging it.
 
 Owner runs are the only ones the API exposes, so external usage is judged from
 the ledger instead. Pass --supabase-url/--supabase-key (service role) to include
@@ -24,6 +35,7 @@ Exit code 1 if anything needs attention, so it can drive a cron or a loop.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import sys
@@ -93,6 +105,45 @@ def ledger(url: str, key: str) -> list[dict]:
         return []
 
 
+def _integrations() -> dict:
+    """The INTEGRATIONS table is the record of which Actors are supposed to be capped."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "export_rollout_csv.py")
+    spec = importlib.util.spec_from_file_location("_exp", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.INTEGRATIONS
+
+
+def vanished_caps(capped_ids: set[str], known: dict) -> list[str]:
+    """Actors we installed a cap on that no longer have one.
+
+    Deliberate removals are exempted by setting "cap_removed_utc" on the entry,
+    so this stays quiet for an intentional --disable and loud for everything else.
+    """
+    problems = []
+    for actor_id, meta in known.items():
+        if actor_id in capped_ids or meta.get("cap_removed_utc"):
+            continue
+        repo = meta.get("github_repo", "?")
+        try:
+            detail = call(f"/acts/{actor_id}")
+            name = f"{detail['username']}/{detail['name']}"
+            versions = detail.get("versions") or []
+            where = ", ".join(f"v{v['versionNumber']}" for v in versions) or "no versions"
+            problems.append(
+                f"{name}: THE CAP IS GONE - FREE_MAX is not set on any version "
+                f"({where}); installed {meta.get('installed_utc', '?')}, repo {repo}. "
+                f"Free users are uncapped until it is restored."
+            )
+        except SystemExit:
+            # call() exits on an API error; an Actor that 404s was deleted.
+            problems.append(
+                f"{actor_id}: listed in INTEGRATIONS but the API will not return it "
+                f"(deleted or renamed?), repo {repo}."
+            )
+    return problems
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--hours", type=float, default=3, help="How far back to read runs")
@@ -111,6 +162,11 @@ def main() -> None:
             if "FREE_MAX" in env:
                 capped.append((f"{actor['username']}/{actor['name']}", actor["id"], env))
                 break
+
+    # Check 1 runs from the opposite direction to everything below: it asks
+    # which Actors SHOULD be capped rather than which are, so a cap that has
+    # gone missing is reported instead of quietly vanishing from the scan.
+    problems += vanished_caps({actor_id for _, actor_id, _ in capped}, _integrations())
 
     print(f"Free-tier health check - {stamp}")
     print(f"{len(capped)} Actor(s) with the cap enabled, runs in the last {args.hours:g}h\n")
