@@ -174,6 +174,30 @@ gets metered and capped.
 
 ---
 
+## 6. Purge the pre-cap builds — the install is not finished without this
+
+Environment variables are baked into the build image at build time, so **every build
+made before step 4 has no `FREE_MAX` in it**. The guard inside those images finds no
+allowance, goes dormant, and says nothing — even though the library is right there.
+
+That matters because Apify lets whoever starts a run pin a build by number
+(`?build=0.0.52`), so each pre-cap build is a working bypass of the cap you just
+installed. Proven on `linkedin-company-api`: pinning the build from hours before its
+variables were set ran fine, charged normally, and logged zero guard lines. Apify only
+expires an untagged build after 90 days *unused*, and a run resets that clock, so a
+build somebody is pinning never expires on its own.
+
+```bash
+python3 scripts/prune_stale_builds.py --actor <ACTOR_ID>            # preview
+python3 scripts/prune_stale_builds.py --actor <ACTOR_ID> --delete   # purge
+```
+
+It keeps the tagged `latest` build and everything built after the cap landed, and
+deletes only the pre-cap window. This is one-time per Actor — later builds inherit the
+variables, so the daily rebuilds are all capped.
+
+---
+
 ## When it does not work
 
 | What you see | Cause |

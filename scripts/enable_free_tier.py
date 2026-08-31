@@ -169,6 +169,24 @@ def main() -> None:
     print('  "Paid Apify account detected - no free-tier limit applies to this run."')
     print("That line is how you know it is installed.")
 
+    # The cap is not actually closed until the pre-cap builds are gone. Every
+    # build made before this moment has no FREE_MAX baked into it, and Apify
+    # lets a caller pin a build by number when starting a run - so each one is
+    # a working bypass that outlives the install. Say so here, every time,
+    # because the install looks finished without it.
+    if not args.disable:
+        print("\n" + "=" * 72)
+        print("NOT DONE YET - purge the pre-cap builds, or the cap can be bypassed.")
+        print("Builds made before now have no FREE_MAX baked in, and a caller can")
+        print("pin any of them with ?build=<number>. Apify only expires an unused")
+        print("build after 90 days, and use resets that clock.")
+        print("")
+        print("  python3 scripts/prune_stale_builds.py "
+              f"--actor {args.actor_id}            # preview")
+        print("  python3 scripts/prune_stale_builds.py "
+              f"--actor {args.actor_id} --delete   # purge")
+        print("=" * 72)
+
 
 if __name__ == "__main__":
     main()
