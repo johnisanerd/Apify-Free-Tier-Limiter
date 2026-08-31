@@ -333,6 +333,41 @@ It exits non-zero when it finds one. Running it after this rollout turned up
 `linkedin-job-search-scraper`, private with 5 runs - caught before publication rather than
 after. **Run it after any launch where the Actor was built with the guard already in it.**
 
+## Stale builds are a live bypass
+
+Environment variables are baked into the build image at build time, so a build made
+before `FREE_MAX` was set carries no cap — and the guard inside it goes dormant and says
+nothing. That holds **even when the library code is already in the image**, which is why
+the code alone tells you nothing about whether a given build is capped.
+
+Apify lets the caller pin a build when starting a run ("you can choose what build to run
+by selecting a tag or number in the run options"), so those builds are a live bypass
+rather than dead weight. Proven 2026-08-30: `linkedin-company-api` run with
+`?build=0.0.52` — the build that shipped hours before its variables were set — succeeded,
+charged normally, and logged zero guard lines.
+
+Retention does not fix it. Apify deletes builds only when they are "not tagged and have
+**not been used** for over 90 days", so a build somebody is actively pinning never
+expires.
+
+```bash
+python3 scripts/prune_stale_builds.py                    # dry run + CSV
+python3 scripts/prune_stale_builds.py --actor <id> --delete
+```
+
+Stale means SUCCEEDED, untagged, and finished on or before the cap's install date. The
+day boundary is **inclusive on purpose**: same-day builds finished before the enable
+script are exploitable, and a strictly-earlier comparison misses them — that is exactly
+how the first pass at this list missed the one build later proven exploitable. Deleting a
+superseded same-day build costs nothing; missing a live bypass does not.
+
+**This is a one-time cleanup per Actor, not a recurring job.** Builds created after the
+cap was installed inherit the variables from the Actor's configuration, so the daily
+README-bump rebuilds are all capped. Only the pre-install window is exposed, and it is
+finite. As of 2026-08-31 that window holds **1,356 builds across 25 Actors**; two
+(`google-images-api`, `naver-search-api`) are already clean because retention pruned
+their pre-cap builds before anyone pinned them.
+
 ## Rank candidates by runs, not just users
 
 `naver-ai-overview-api` was missed twice by a shortlist ordered on 30-day *users*. It has
