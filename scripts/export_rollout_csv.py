@@ -183,11 +183,11 @@ INTEGRATIONS = {
     "pKIcPdH1zYxQBowJa": {
         "github_repo": "johnisanerd/ApifyLinkedInJobSearch",
         "local_path": "~/Github/ApifyLinkedInJobSearch/ApifyLinkedInJobSearch",
-        "installed_utc": "2026-08-30",
+        "installed_utc": "2026-08-31",
         "charge_event": "per-row base event + a resolution surcharge event",
         "charge_granularity": "per row, surcharge stacks on the same row",
         "dockerfile_installs_from": "uv.lock",
-        "notes": "Found by the new list_installs.py --find-unconfigured sweep, not by anyone noticing: guard committed and deployed, variables never set. Still private with 5 runs, so nothing leaked. Meters with record() because it checks charged_count itself, and combines the platform limit and the allowance into one stop signal. SDK 4, v0.1.8, version 0.1. DORMANT until priced - no PAY_PER_EVENT pricing yet, same as ApifyAshby.",
+        "notes": "Found by the new list_installs.py --find-unconfigured sweep, not by anyone noticing: guard committed and deployed, variables never set. Still private with 5 runs, so nothing leaked. Meters with record() because it checks charged_count itself, and combines the platform limit and the allowance into one stop signal. SDK 4, v0.1.8, version 0.1. Priced and metering as of 2026-08-31 ($0.0005/job-listing, so $1.00 is ~2,000 listings). installed_utc is the 2026-08-31 RE-install, not the 2026-08-30 first install: SUPABASE_KEY was removed from the Actor afterwards and build 0.1.7 shipped without it, so everything up to 0.1.8 must be treated as uncapped and prunable.",
     },
     "UhJGmp1YJmNidr7h1": {
         "github_repo": "johnisanerd/ApifyLinkedInCompany",

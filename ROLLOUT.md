@@ -52,14 +52,14 @@ variables, or a test flag left switched on.
 | `johnvc/ApifyAshby` (private) | `H9ZkYEGh5gSvAVSXT` | $1.00 | v0.1.8 | installed; dormant until priced |
 | `johnvc/linkedin-people-search-api` (private) | `K57owi8nOaCWbnGQM` | $1.00 | v0.1.8 | OK |
 | `johnvc/linkedin-company-api` | `UhJGmp1YJmNidr7h1` | $1.00 | v0.1.8 | OK |
-| `johnvc/linkedin-job-search-scraper` (private) | `pKIcPdH1zYxQBowJa` | $1.00 | v0.1.8 | installed; dormant until priced |
+| `johnvc/linkedin-job-search-scraper` (private) | `pKIcPdH1zYxQBowJa` | $1.00 | v0.1.8 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
-matches the tier-resolved price. **Two exceptions:** `ApifyAshby` and
-`linkedin-job-search-scraper` have no pay-per-event pricing yet, so their free path can
-only be verified as far as the guard's no-prices line - neither writes a ledger row until
-the Actor is priced. Re-verify each with a forced-free run once pricing is set.
+matches the tier-resolved price. **One exception:** `ApifyAshby` has no pay-per-event
+pricing yet, so its free path can only be verified as far as the guard's no-prices line -
+it writes no ledger row until the Actor is priced. (`linkedin-job-search-scraper` was in
+the same state until 2026-08-31, when it was priced and its metering verified.)
 
 ## What each one taught us
 
