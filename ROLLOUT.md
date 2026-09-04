@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (28 of 104 Actors, as of 2026-08-30)
+## Enabled (32 of 104 Actors, as of 2026-09-03)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -53,6 +53,10 @@ variables, or a test flag left switched on.
 | `johnvc/linkedin-people-search-api` (private) | `K57owi8nOaCWbnGQM` | $1.00 | v0.1.8 | OK |
 | `johnvc/linkedin-company-api` | `UhJGmp1YJmNidr7h1` | $1.00 | v0.1.8 | OK |
 | `johnvc/linkedin-job-search-scraper` (private) | `pKIcPdH1zYxQBowJa` | $1.00 | v0.1.8 | OK |
+| `johnvc/linkedin-posts-api` | `P9ArUDJDSgHTmYzDp` | $1.00 | v0.1.8 | OK |
+| `johnvc/linkedin-profile-api` | `IBDtFcC5lRLf0vXoH` | $1.00 | v0.1.8 | OK |
+| `johnvc/linkedin-jobs-api` | `8gL3E4qLSkxxDyeDl` | $1.00 | v0.1.8 | OK |
+| `johnvc/linkedin-learning-api` | `La2BRZMUbyhY5gKNG` | $1.00 | v0.1.8 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -60,10 +64,14 @@ matches the tier-resolved price. **One exception:** `ApifyAshby` has no pay-per-
 pricing yet, so its free path can only be verified as far as the guard's no-prices line -
 it writes no ledger row until the Actor is priced. (`linkedin-job-search-scraper` was in
 the same state until 2026-08-31, when it was priced and its metering verified.)
+`linkedin-profile-api` is verified paid-path and free-path guard-disclosure, but its
+free-path ledger row was not captured on install: the upstream profile fetch is slow and
+TIMED-OUT on the test URLs. Its guard code is byte-identical to `linkedin-posts-api`
+(which metered exactly), and real free traffic will produce the row.
 
 ## What each one taught us
 
-Twenty-eight installs, and the charge shape has differed more often than it has repeated.
+Thirty-two installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
