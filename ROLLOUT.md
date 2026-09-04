@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (32 of 104 Actors, as of 2026-09-03)
+## Enabled (35 of 104 Actors, as of 2026-09-04)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -57,6 +57,9 @@ variables, or a test flag left switched on.
 | `johnvc/linkedin-profile-api` | `IBDtFcC5lRLf0vXoH` | $1.00 | v0.1.8 | OK |
 | `johnvc/linkedin-jobs-api` | `8gL3E4qLSkxxDyeDl` | $1.00 | v0.1.8 | OK |
 | `johnvc/linkedin-learning-api` | `La2BRZMUbyhY5gKNG` | $1.00 | v0.1.8 | OK |
+| `johnvc/opentable-reviews-api` | `O63j3hLJAHrHI1P00` | $1.00 | v0.1.8 | OK |
+| `johnvc/clutch-agency-api` | `JYnIiqxn4hMnWZiKQ` | $1.00 | v0.1.8 | OK |
+| `johnvc/g2-reviews-api` | `qTS4FTyj3jfN1ebB1` | $1.00 | v0.1.8 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -71,7 +74,7 @@ TIMED-OUT on the test URLs. Its guard code is byte-identical to `linkedin-posts-
 
 ## What each one taught us
 
-Thirty-two installs, and the charge shape has differed more often than it has repeated.
+Thirty-five installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
