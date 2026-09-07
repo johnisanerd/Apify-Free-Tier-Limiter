@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (39 of 104 Actors, as of 2026-09-07)
+## Enabled (43 of 104 Actors, as of 2026-09-07)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -64,6 +64,10 @@ variables, or a test flag left switched on.
 | `johnvc/trustpilot-reviews-api` | `YI3eVZdrh15SoADFT` | $1.00 | v0.1.8 | OK |
 | `johnvc/google-jobs-scraper---pay-per-result` | `J0ulz8eoVqej6oqIf` | $1.00 | v0.1.8 | OK |
 | `johnvc/zillow-api` (private) | `IbZlpvosVqaD4lhag` | $1.00 | v0.1.8 | OK (installed outside session; verify prune) |
+| `johnvc/google-local-services-api` | `S4vytlD3hbgocTHi6` | $1.00 | v0.1.8 | OK |
+| `johnvc/google-lens-api` | `KXtydhfbdBPC0hU7R` | $1.00 | v0.1.8 | OK |
+| `johnvc/google-maps-directions-api` | `czXNneHcGQ1vsxmwu` | $1.00 | v0.1.8 | OK |
+| `johnvc/GoogleNewsAPI` | `itMT9aXhvbNwasFYH` | $1.00 | v0.1.8 | OK |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount
@@ -78,7 +82,7 @@ TIMED-OUT on the test URLs. Its guard code is byte-identical to `linkedin-posts-
 
 ## What each one taught us
 
-Thirty-nine installs, and the charge shape has differed more often than it has repeated.
+Forty-three installs, and the charge shape has differed more often than it has repeated.
 Check the shape before you start — the two questions that decide the whole integration
 are in [Choosing the next Actors](#choosing-the-next-actors).
 
