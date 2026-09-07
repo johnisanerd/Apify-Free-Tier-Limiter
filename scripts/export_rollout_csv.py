@@ -198,6 +198,15 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "uv.lock",
         "notes": "Code arrived pre-integrated and already deployed (build 0.0.52) but the env vars were never set, so it ran uncapped with real public traffic. Only Actor so far with a try/except import fallback to a local _NullGuard for dev; on-platform the guard's own log line is what proves the real library loaded rather than the shim. On SDK 3 yet pinned to v0.1.8, which works fine. Measured $0.00495/company, so $1.00 is about 200 companies a month.",
     },
+    "IbZlpvosVqaD4lhag": {
+        "github_repo": "johnisanerd/ApifyZillowListings",
+        "local_path": "~/Github/ApifyZillowListings/ApifyZillowListings",
+        "installed_utc": "2026-09-05",
+        "charge_event": "unknown (installed outside this session)",
+        "charge_granularity": "unknown",
+        "dockerfile_installs_from": "unknown",
+        "notes": "CAP INSTALLED OUTSIDE THIS SESSION (found 2026-09-07 by the CSV/ROLLOUT count mismatch). Config is correct: FREE_MAX=1.00, SUPABASE vars set, priced. Private, 0 external users, build history starts 2026-09-05 (tagged 0.0.10). installed_utc is approximate (oldest build); VERIFY the true install date and prune pre-cap builds before it goes public.",
+    },
     "9Yy2qkVB4G49ayWXq": {
         "github_repo": "johnisanerd/ApifyWorkdayScraper",
         "local_path": "~/Github/ApifyWorkdayScraper/ApifyWorkdayScraper",
