@@ -63,7 +63,7 @@ variables, or a test flag left switched on.
 | `johnvc/workday-careers-api` | `9Yy2qkVB4G49ayWXq` | $1.00 | v0.1.8 | OK |
 | `johnvc/trustpilot-reviews-api` | `YI3eVZdrh15SoADFT` | $1.00 | v0.1.8 | OK |
 | `johnvc/google-jobs-scraper---pay-per-result` | `J0ulz8eoVqej6oqIf` | $1.00 | v0.1.8 | OK |
-| `johnvc/zillow-api` (private) | `IbZlpvosVqaD4lhag` | $1.00 | v0.1.8 | OK (installed outside session; verify prune) |
+| `johnvc/zillow-api` (private) | `IbZlpvosVqaD4lhag` | $1.00 | v0.1.8 | OK |
 | `johnvc/google-local-services-api` | `S4vytlD3hbgocTHi6` | $1.00 | v0.1.8 | OK |
 | `johnvc/google-lens-api` | `KXtydhfbdBPC0hU7R` | $1.00 | v0.1.8 | OK |
 | `johnvc/google-maps-directions-api` | `czXNneHcGQ1vsxmwu` | $1.00 | v0.1.8 | OK |

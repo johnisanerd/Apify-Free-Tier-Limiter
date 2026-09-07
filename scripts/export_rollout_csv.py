@@ -201,11 +201,11 @@ INTEGRATIONS = {
     "IbZlpvosVqaD4lhag": {
         "github_repo": "johnisanerd/ApifyZillowListings",
         "local_path": "~/Github/ApifyZillowListings/ApifyZillowListings",
-        "installed_utc": "2026-09-05",
+        "installed_utc": "2026-09-07",
         "charge_event": "unknown (installed outside this session)",
         "charge_granularity": "unknown",
         "dockerfile_installs_from": "unknown",
-        "notes": "CAP INSTALLED OUTSIDE THIS SESSION (found 2026-09-07 by the CSV/ROLLOUT count mismatch). Config is correct: FREE_MAX=1.00, SUPABASE vars set, priced. Private, 0 external users, build history starts 2026-09-05 (tagged 0.0.10). installed_utc is approximate (oldest build); VERIFY the true install date and prune pre-cap builds before it goes public.",
+        "notes": "Cap installed outside this session; surfaced 2026-09-07 by the CSV/ROLLOUT count mismatch, then John confirmed the cap went on 2026-09-07 (same day as the actor launch), so every build is post-cap and there is nothing to prune (John: skip pruning). Config correct: FREE_MAX=1.00, SUPABASE vars set, priced.",
     },
     "S4vytlD3hbgocTHi6": {
         "github_repo": "johnisanerd/ApifyGoogleLocalServices",
