@@ -36,6 +36,33 @@ DEFAULT_OUT = Path.home() / "Desktop" / "Apify" / "free-tier-limiter-rollout.csv
 # One entry per migrated Actor. Everything here is a fact about the integration
 # that the Apify API cannot tell us.
 INTEGRATIONS = {
+    "OYmaEgBLPCE3cDiCQ": {
+        "github_repo": "johnisanerd/ApifyEarningsTranscripts",
+        "local_path": "~/Github/ApifyEarningsTranscripts/ApifyEarningsTranscripts",
+        "installed_utc": "2026-09-08",
+        "charge_event": "record",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 3.4->4.0 bump + v0.1.8 pin. Shape B: inline Actor.charge in Charger.push kept (count= keyword), guard.record meters and stops the loop. guard.close in the httpx finally, Done status gated on exhausted. Verified: paid record:5 + 'Paid Apify account detected'; forced-free ledger $0.00132/12 charges. tests/test_charge_keyword added.",
+    },
+    "YgfEGtzolQq9RFbXJ": {
+        "github_repo": "johnisanerd/ApifySynthea",
+        "local_path": "~/Github/ApifySynthea/ApifySynthea",
+        "installed_utc": "2026-09-08",
+        "charge_event": "patient_record",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 3.0.5->4.0 bump + v0.1.8 pin. Shape B pre-charge: inline setup + patient_record charges kept (count= keyword), guard.record meters (return ignored). finally added for guard.close. Verified: forced-free ledger $0.011025/1 (patient_record). PRE-EXISTING pricing drift: live pricing lacks the 'setup' event (platform WARNs 'unknown event setup'), so setup is not billed and the guard correctly skips it - flag for a pricing pass.",
+    },
+    "1ECka9fUXuyMqvqO2": {
+        "github_repo": "johnisanerd/ApifyWorkdayFinder",
+        "local_path": "~/Github/ApifyWorkdayFinder/ApifyWorkdayFinder",
+        "installed_utc": "2026-09-08",
+        "charge_event": "site_returned",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 3.4->4.0 bump + v0.1.8 pin. Shape B: inline Actor.charge in _charge_one kept (count= keyword), guard.record folded into _charge_one to stop the push loop. try/finally added around the push+status tail, Done status gated on exhausted. Verified: paid nvidia->1 site $0.00092; forced-free ledger $0.0009/1. NOT ApifyWorkdayScraper (that is workday-careers-api).",
+    },
     "lXNhuFdXgfOzO1mAE": {
         "github_repo": "johnisanerd/ApifyIndeedJobs",
         "local_path": "~/Github/ApifyIndeedJobs/ApifyIndeedJobs",
