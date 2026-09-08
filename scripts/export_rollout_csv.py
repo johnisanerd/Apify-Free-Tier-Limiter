@@ -36,6 +36,15 @@ DEFAULT_OUT = Path.home() / "Desktop" / "Apify" / "free-tier-limiter-rollout.csv
 # One entry per migrated Actor. Everything here is a fact about the integration
 # that the Apify API cannot tell us.
 INTEGRATIONS = {
+    "drYfVwbtEdPqbFkiC": {
+        "github_repo": "johnisanerd/ApifyDuckDuckGo",
+        "local_path": "~/Github/ApifyDuckDuckGo/ApifyDuckDuckGo",
+        "installed_utc": "2026-09-08",
+        "charge_event": "page_processed",
+        "charge_granularity": "per page",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Shape B (inline Actor.charge + guard.record). Was pinned apify<3.0 (guard needs SDK>=3); another agent UPGRADED it to SDK 4 (apify==4.0.2) + added pyproject.toml + the guard, keeping charges keyword (count=) so SDK-4 doesn't silently drop billing. I set the env vars (env-only) earlier; verified after upgrade: paid charged setup:1/page_processed:1, forced-free ledger $0.0101/2 charges. Big pre-cap build backlog (0.0.31x).",
+    },
     "1SOrTCb3mzaT2TXHK": {
         "github_repo": "johnisanerd/ApifyAdsTransparency",
         "local_path": "~/Github/ApifyAdsTransparency/ApifyAdsTransparency",
