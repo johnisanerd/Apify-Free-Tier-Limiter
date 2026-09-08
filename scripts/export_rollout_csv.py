@@ -36,6 +36,24 @@ DEFAULT_OUT = Path.home() / "Desktop" / "Apify" / "free-tier-limiter-rollout.csv
 # One entry per migrated Actor. Everything here is a fact about the integration
 # that the Apify API cannot tell us.
 INTEGRATIONS = {
+    "w8SNoAPyZLk7sLuOl": {
+        "github_repo": "johnisanerd/ApifyGoogleScholarCaseLaw",
+        "local_path": "~/Github/ApifyGoogleScholarCaseLaw/ApifyGoogleScholarCaseLaw",
+        "installed_utc": "2026-09-08",
+        "charge_event": "search-result",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "REQS-REGEN. Meter-only _charge(...)->None helper: threaded guard through it (keep Actor.charge, add guard.record, return exhausted=stop); block-at-start + mid-loop break on both loops (search-result, case-detail) + actor-start fee. Stayed on SDK 3.4 (positional charge fine, guard has get_charging_manager) — NO SDK-4 bump. Verified: paid actor-start:1 + 'Paid Apify account detected'; forced-free ledger $0.024850/6 (actor-start + 5 search-result).",
+    },
+    "tuFyCykkPww3wA42u": {
+        "github_repo": "johnisanerd/ApifyIndeedCompanies",
+        "local_path": "~/Github/ApifyIndeedCompanies/ApifyIndeedCompanies",
+        "installed_utc": "2026-09-08",
+        "charge_event": "company-scraped + company-listed + review-scraped + salary-scraped + question-scraped",
+        "charge_granularity": "per row",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 4.0.2, v0.1.8 pin. Re-platformed BrightData -> direct Indeed pages via Unblocker. _guard routed through _charge (one site per entity loop), started after validation before pricing/proxy, closed in main's finally, terminal status gated on exhausted. Verified paid path: company-scraped:1 + 'Paid Apify account detected'. Uses no Supabase of its own (no env-name collision).",
+    },
     "OYmaEgBLPCE3cDiCQ": {
         "github_repo": "johnisanerd/ApifyEarningsTranscripts",
         "local_path": "~/Github/ApifyEarningsTranscripts/ApifyEarningsTranscripts",
