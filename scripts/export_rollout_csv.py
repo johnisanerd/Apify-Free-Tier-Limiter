@@ -36,6 +36,33 @@ DEFAULT_OUT = Path.home() / "Desktop" / "Apify" / "free-tier-limiter-rollout.csv
 # One entry per migrated Actor. Everything here is a fact about the integration
 # that the Apify API cannot tell us.
 INTEGRATIONS = {
+    "u2azjcqJVle8Jbjyy": {
+        "github_repo": "johnisanerd/ApifyBraveAIMode",
+        "local_path": "~/Github/ApifyBraveAIMode/ApifyBraveAIMode",
+        "installed_utc": "2026-09-08",
+        "charge_event": "ai_mode_queried",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "requirements.txt",
+        "notes": "Shape A _charge->bool routed through guard.charge (two sites: fetch-failure + success). Dockerfile installs from requirements.txt, so uv export regen was required.",
+    },
+    "kY6DGaNpuDThd1fsi": {
+        "github_repo": "johnisanerd/ApifyBing",
+        "local_path": "~/Github/ApifyBing/ApifyBing",
+        "installed_utc": "2026-09-08",
+        "charge_event": "page_returned",
+        "charge_granularity": "per page",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Shape A _charge->bool. Guard lifecycle managed in main() (start/blocked/close) and passed into _run(guard) because _run has several early returns; final status gated on guard.exhausted.",
+    },
+    "u4XY17ykVgWgt2Wv2": {
+        "github_repo": "johnisanerd/ApifyCrunchbaseCompanies",
+        "local_path": "~/Github/ApifyCrunchbaseCompanies/ApifyCrunchbaseCompanies",
+        "installed_utc": "2026-09-08",
+        "charge_event": "company-scraped",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "Shape A _charge->bool helper routed through guard.charge; pre-budget affordable cap retained. Two collect loops (URLs + name discovery). Upstream snapshot API is slow (minutes/run).",
+    },
     "WzsyD0afch5fKHGn5": {
         "github_repo": "johnisanerd/ApifyApifyScraper",
         "local_path": "~/Github/ApifyApifyScraper/ApifyApifyScraper",
