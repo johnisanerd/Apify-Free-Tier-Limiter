@@ -67,7 +67,7 @@ INTEGRATIONS = {
         "github_repo": "johnisanerd/ApifyMapsPhotos",
         "local_path": "~/Github/ApifyMapsPhotos/ApifyMapsPhotos",
         "installed_utc": "2026-09-08",
-        "charge_event": "photo_pulled",
+        "charge_event": "photo_returned",
         "charge_granularity": "per item",
         "dockerfile_installs_from": "requirements.txt",
         "notes": "REQS-REGEN. Shape A, 4 sites/3 events (actor_start + place_search x2 + photo). guard.start before existing main try/finally; close added there.",
