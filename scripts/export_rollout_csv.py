@@ -774,6 +774,42 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "requirements.txt",
         "notes": "Lives on version 0.1. page_processed was fire-and-forget (result ignored), so guard.charge() is a straight swap there; setup verifies charged_count and meters with record(). serper.dev upstream (SEARCH_API_KEY).",
     },
+    "ydwPB7nTJe5cHApdb": {
+        "github_repo": "johnisanerd/ApifyAppStoreProduct",
+        "local_path": "~/Github/ApifyAppStoreProduct/ApifyAppStoreProduct",
+        "installed_utc": "2026-09-08",
+        "charge_event": "setup + result",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 3.4->4.0 migration + v0.1.8 pin. Shape B: inline Actor.charge (count= keyword), guard.record(setup/result) meters and stops the per-item loop. try/finally wraps billing->EOF, guard.close in finally. Verified on build 0.1.121: paid setup:1/result:1 + 'Paid Apify account detected' + field-by-field parity; forced-free ledger $0.022000/2 charges; live MCP gate SUCCEEDED (origin=MCP, run Ihdygbgg9wpNQkr9X). tests/test_charge_keyword added.",
+    },
+    "klDzABybtorsuUA9z": {
+        "github_repo": "johnisanerd/ApifyAppStore",
+        "local_path": "~/Github/ApifyAppStore/ApifyAppStore",
+        "installed_utc": "2026-09-08",
+        "charge_event": "setup + result",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 3.4->4.0 migration + v0.1.8 pin. Store slug apple-app-store-search. Shape B: inline Actor.charge (count= keyword), guard.record(setup/result), per-item loop stops with break. finally added to the existing outer try/except for guard.close. Verified on build 0.1.95: paid setup:1/result:3 + paid line + parity; forced-free ledger $0.050500/4 charges; live MCP gate SUCCEEDED. tests/test_charge_keyword added.",
+    },
+    "uqAOwMmR2MeMuhJRr": {
+        "github_repo": "johnisanerd/ApifyGoogleShortVideos",
+        "local_path": "~/Github/ApifyGoogleShortVideos/ApifyGoogleShortVideos",
+        "installed_utc": "2026-09-08",
+        "charge_event": "setup + page_processed",
+        "charge_granularity": "per page",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 3.4->4.0 migration + v0.1.8 pin. Lives on version 0.0 (actor.json says 0.1 but the console builds 0.0 - env vars + all ops target 0.0). Shape B: inline Actor.charge (count= keyword), guard.record(setup/page_processed), page loop breaks on exhaustion. try/finally wraps billing->end-of-main (module-level if __name__ left at col 0). Verified on build 0.0.89: paid setup:1/page_processed:1 + paid line + parity (8 rows, 0 diffs); forced-free ledger $0.029900/2 charges; live MCP gate SUCCEEDED. tests/test_charge_keyword added.",
+    },
+    "AcKc1V9tbsoPtyhWU": {
+        "github_repo": "johnisanerd/ApifyGoogleFinance",
+        "local_path": "~/Github/ApifyGoogleFinance/ApifyGoogleFinance",
+        "installed_utc": "2026-09-08",
+        "charge_event": "setup + quote_fetched",
+        "charge_granularity": "per item (batched pre-charge)",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 3.4->4.0 migration + v0.1.8 pin. Store slug google-finance-api, actor.json name google-finance-scraper, lives on version 0.0. Shape B pre-charge: inline setup + batched quote_fetched(count=num_queries) kept keyword, guard.record meters both (returns ignored, batch already billed). try/finally wraps billing->EOF. Verified on build 0.0.96: paid quote_fetched:2/setup:1 + paid line; forced-free ledger $0.039800 (setup + 2 quotes); live MCP gate SUCCEEDED. NOTE: upstream data API currently returns empty results (error rows) for test symbols - PRE-EXISTING (baseline 3.4.0 errored identically), not the migration; flag for a data-source check. tests/test_charge_keyword added.",
+    },
 }
 
 COLUMNS = [
