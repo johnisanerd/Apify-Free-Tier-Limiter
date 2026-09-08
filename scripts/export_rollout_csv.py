@@ -63,6 +63,15 @@ INTEGRATIONS = {
         "dockerfile_installs_from": "uv.lock",
         "notes": "SDK 3.4->4.0 bump + v0.1.8 pin. Shape B: inline Actor.charge in _charge_one kept (count= keyword), guard.record folded into _charge_one to stop the push loop. try/finally added around the push+status tail, Done status gated on exhausted. Verified: paid nvidia->1 site $0.00092; forced-free ledger $0.0009/1. NOT ApifyWorkdayScraper (that is workday-careers-api).",
     },
+    "6oBDAcmEEgEkc8aR4": {
+        "github_repo": "johnisanerd/ApifySECInvestmentAdvisors",
+        "local_path": "~/Github/ApifySECInvestmentAdvisors/ApifyInvestmentAdvisors",
+        "installed_utc": "2026-09-08",
+        "charge_event": "contact_returned",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 3.0.5->4.0 bump + v0.1.8 pin. Shape B pre-charge: inline setup + contact_returned charges kept (count= keyword), guard.record meters both. ENV COLLISION FIXED: this actor's data layer read SUPABASE_URL/KEY for its OWN SEC-advisors DB (project gzbeb...), colliding with the guard - renamed the data layer to SEC_SUPABASE_URL/KEY (fallback to SUPABASE_URL/KEY for local dev); guard keeps SUPABASE_URL/KEY = free-tier (jsyorfqz...). Verified: paid 'Paid Apify account detected' + 2 contacts $0.019; forced-free ledger $0.021/2 (setup+contact). WATCH: a concurrent env-sync reset SUPABASE_URL->gzbeb and removed FREE_MAX mid-rollout; I re-set them. If the guard goes quiet, re-check these 5 vars.",
+    },
     "lXNhuFdXgfOzO1mAE": {
         "github_repo": "johnisanerd/ApifyIndeedJobs",
         "local_path": "~/Github/ApifyIndeedJobs/ApifyIndeedJobs",
@@ -808,7 +817,7 @@ INTEGRATIONS = {
         "charge_event": "setup + quote_fetched",
         "charge_granularity": "per item (batched pre-charge)",
         "dockerfile_installs_from": "uv.lock",
-        "notes": "SDK 3.4->4.0 migration + v0.1.8 pin. Store slug google-finance-api, actor.json name google-finance-scraper, lives on version 0.0. Shape B pre-charge: inline setup + batched quote_fetched(count=num_queries) kept keyword, guard.record meters both (returns ignored, batch already billed). try/finally wraps billing->EOF. Verified on build 0.0.96: paid quote_fetched:2/setup:1 + paid line; forced-free ledger $0.039800 (setup + 2 quotes); live MCP gate SUCCEEDED. NOTE: upstream data API currently returns empty results (error rows) for test symbols - PRE-EXISTING (baseline 3.4.0 errored identically), not the migration; flag for a data-source check. tests/test_charge_keyword added.",
+        "notes": "SDK 3.4->4.0 migration + v0.1.8 pin. Store slug google-finance-api, actor.json name google-finance-scraper, lives on version 0.0. Shape B pre-charge: inline setup + batched quote_fetched(count=num_queries) kept keyword, guard.record meters both (returns ignored, batch already billed). try/finally wraps billing->EOF. Verified on build 0.0.96: paid quote_fetched:2/setup:1 + paid line; forced-free ledger $0.039800 (setup + 2 quotes); live MCP gate SUCCEEDED. The actor returns real quote data with the documented TICKER:EXCHANGE format (e.g. AAPL:NASDAQ) - an earlier 'empty results' scare during verification was a WRONG-INPUT false alarm (bare AAPL / reversed NASDAQ:AAPL); the input schema already prefills and documents the correct format. tests/test_charge_keyword added.",
     },
 }
 
