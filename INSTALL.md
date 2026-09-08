@@ -1,12 +1,55 @@
 # Adding the free-tier cap to an Actor
 
-Five steps, about ten minutes. Step 4 is the one that silently wastes an afternoon if
-you skip it.
+Five steps, about ten minutes. Do the **step 0 pre-flight first** — it takes seconds and
+catches the one class of break the guard can cause (a Supabase env-var collision). Step 4
+is the one that silently wastes an afternoon if you skip it.
 
 > **Your Supabase values.** The ledger URL and key are not in this public repo. Get them
 > from an Actor that already has the cap (Console → Settings → Environment variables), or
 > from the Supabase project `apify-free-tier`. Referred to below as `<SUPABASE_URL>` and
 > `<SUPABASE_KEY>`.
+
+---
+
+## 0. Pre-flight: does the Actor use `SUPABASE_URL` / `SUPABASE_KEY` itself?
+
+The guard reaches its ledger through the **`SUPABASE_URL`** and **`SUPABASE_KEY`** env vars
+(hardcoded in `guard.py` / `db.py`). If the Actor's *own* code reads either of those two names
+for a *different* database, provisioning the ledger creds (step 4) overwrites the Actor's data
+connection and breaks it — silently, because it only fails on-platform after a rebuild.
+
+This bit `SECInvestmentAdvisorContacts`: its data layer read `SUPABASE_URL`/`SUPABASE_KEY` for
+its own SEC-advisors DB, so the daily run went from SUCCEEDED to `Failed to connect. Check
+configuration.` the moment the capped build shipped. Every run before it had passed — a clean
+"the cap did this" signal.
+
+Grep the Actor's source **before touching anything**:
+
+```bash
+grep -rnE "SUPABASE_URL|SUPABASE_KEY|create_client|create_engine|psycopg|DATABASE_URL" <actor>/src/
+```
+
+- **No hits, or only comments** → no collision. Continue to step 1. (This is most Actors — 83 of
+  87 in the fleet audit.)
+- **Hits only on `SUPABASE_USER` / `SUPABASE_PASSWORD` / `SUPABASE_HOST` / `SUPABASE_PORT` /
+  `SUPABASE_DBNAME`** (a direct Postgres DSN, usually feeding `create_engine`) → **safe.** The
+  collision is *only* the two names `SUPABASE_URL` and `SUPABASE_KEY`, not the whole `SUPABASE_`
+  namespace — those DSN vars coexist with the guard's vars. Continue.
+- **The Actor reads `SUPABASE_URL` or `SUPABASE_KEY` for its own database** → **STOP. Do not set
+  the ledger vars yet.** Rename the *Actor's* data-layer vars first (the guard's names are fixed
+  across 80+ Actors, so the Actor is the side that moves):
+
+  1. In the Actor's DB code, read a prefixed name with a local-dev fallback:
+     `os.getenv("XXX_SUPABASE_URL") or os.getenv("SUPABASE_URL")` (and `..._KEY`), where `XXX` is
+     the Actor (e.g. `SEC_`).
+  2. Set the prefixed vars (`XXX_SUPABASE_URL` / `XXX_SUPABASE_KEY`) on the Actor from its own
+     project's creds; leave `SUPABASE_URL` / `SUPABASE_KEY` for the guard.
+  3. Then do steps 1–6. Verify **both** afterward: the Actor's own data query succeeds, **and** a
+     forced-free run logs `Free usage this month …` (a wrong guard key shows as
+     `tracking unavailable (HTTP 401)`).
+
+Skipping this check is a latent break: it surfaces only when the Actor is next rebuilt or the
+pre-cap builds are pruned.
 
 ---
 
@@ -207,6 +250,8 @@ variables, so the daily rebuilds are all capped.
 | `allowance ($*********)` | `FREE_MAX` is marked secret |
 | "no pay-per-event prices" | The Actor is not on PPE pricing, or the owner started the run |
 | "tracking unavailable (...)" | Supabase unreachable or misconfigured; the run continues untracked on purpose |
+| `tracking unavailable (HTTP 401)` specifically | `SUPABASE_KEY` does not match `SUPABASE_URL`'s project — often an Actor's own key left in the guard's var (see step 0 collision) |
+| The Actor's **own** run now fails (`Failed to connect`, its DB errors) after the cap shipped | The Actor reads `SUPABASE_URL`/`SUPABASE_KEY` for its own database; the ledger creds clobbered it. This is the step 0 collision — rename the Actor's vars |
 | Paying customers being capped | `FREE_TIER_FORCE` left set |
 
 `FREE_TIER_DEBUG=1` prints every variable the guard can see plus the resolved price map,

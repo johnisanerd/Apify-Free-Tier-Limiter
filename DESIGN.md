@@ -63,6 +63,14 @@ email-signup/bonus customers too.
 | `FREE_MAX` (dollars) | custom env var, set per Actor |
 | `SUPABASE_URL` / `SUPABASE_KEY` | per-Actor secret env vars |
 
+> **Name-collision constraint.** `SUPABASE_URL` / `SUPABASE_KEY` are read by hardcoded name. An
+> Actor that reads those same two names for its *own* database collides — baking the ledger creds
+> into a build breaks the Actor's data connection (hit on `SECInvestmentAdvisorContacts`, whose
+> data layer used them for its SEC-advisors DB). INSTALL.md **step 0** is the pre-flight grep; the
+> fix is to rename the *Actor's* vars (`XXX_SUPABASE_URL/KEY` with an `or os.getenv("SUPABASE_URL")`
+> fallback), never the guard's. A direct-Postgres DSN (`SUPABASE_USER/PASSWORD/HOST/PORT/DBNAME`)
+> does **not** collide — only the two names `SUPABASE_URL` / `SUPABASE_KEY` do.
+
 ## Function design (built)
 
 The notes' Initiate / Check / Increment, wrapped so an Actor integrates in ~3 lines.
