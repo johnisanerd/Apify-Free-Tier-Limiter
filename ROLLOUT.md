@@ -21,7 +21,7 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
-## Enabled (46 of 104 Actors, as of 2026-09-07)
+## Enabled (47 of 104 Actors, as of 2026-09-08)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |
 | --- | --- | --- | --- | --- |
@@ -71,6 +71,7 @@ variables, or a test flag left switched on.
 | `johnvc/startup-investors-data-scraper` | `SVdYzqKOwfJT7shHd` | $1.00 | v0.1.8 | OK |
 | `johnvc/google-maps-contributor-reviews-api` | `ZtBuxIbU7gPdQozq3` | $1.00 | v0.1.8 | OK |
 | `johnvc/google-patents-api` | `6KLyRx66f0nHYV60f` | $1.00 | v0.1.8 | OK |
+| `johnvc/indeed-jobs-api` | `lXNhuFdXgfOzO1mAE` | $1.00 | v0.1.8 | OK (capped 2026-09-08 while private, SDK 4; forced-free run pending) |
 
 Each was verified on-platform on both paths: a paying account logs the "no limit
 applies" line and writes nothing, and a forced-free run writes a ledger row whose amount

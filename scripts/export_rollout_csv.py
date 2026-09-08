@@ -36,6 +36,15 @@ DEFAULT_OUT = Path.home() / "Desktop" / "Apify" / "free-tier-limiter-rollout.csv
 # One entry per migrated Actor. Everything here is a fact about the integration
 # that the Apify API cannot tell us.
 INTEGRATIONS = {
+    "lXNhuFdXgfOzO1mAE": {
+        "github_repo": "johnisanerd/ApifyIndeedJobs",
+        "local_path": "~/Github/ApifyIndeedJobs/ApifyIndeedJobs",
+        "installed_utc": "2026-09-08",
+        "charge_event": "job-scraped",
+        "charge_granularity": "per item",
+        "dockerfile_installs_from": "uv.lock",
+        "notes": "SDK 4, v0.1.8 pin. Shape A _charge->bool routed through guard.charge; second event company-details-added (add-on, priced at the gate). Capped while private, before publish.",
+    },
     "drYfVwbtEdPqbFkiC": {
         "github_repo": "johnisanerd/ApifyDuckDuckGo",
         "local_path": "~/Github/ApifyDuckDuckGo/ApifyDuckDuckGo",
