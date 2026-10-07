@@ -84,6 +84,13 @@ free-path ledger row was not captured on install: the upstream profile fetch is 
 TIMED-OUT on the test URLs. Its guard code is byte-identical to `linkedin-posts-api`
 (which metered exactly), and real free traffic will produce the row.
 
+**Planned: v0.1.9 with the cost-controls release.** `google-images-api`
+(`bvAQMqCbp6wE53JzK`) and `google-maps-places-api` (`WQbrHYgrJV5fP6b09`) will move to
+library v0.1.9 when that release ships, so they check `guard.affordable()` before each
+paid upstream call instead of finding out after it. Their rows above stay at v0.1.7 until
+then. Once each is on v0.1.9, prune the builds that still carry the old library, since a
+caller can pin one: `prune_stale_builds.py --actor <id> --before-build <first v0.1.9 build>`.
+
 ## What each one taught us
 
 Forty-six installs, and the charge shape has differed more often than it has repeated.
