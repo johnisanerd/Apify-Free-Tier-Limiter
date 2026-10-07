@@ -14,11 +14,16 @@ Three properties matter more than the feature itself:
 2. The hot path never blocks. Per-item Actors in this fleet charge hundreds of
    times per run; a synchronous round trip per charge would add minutes. Charges
    accumulate locally and flush in the background, with at most one flush in
-   flight. Enforcement reads `known_total + pending`, so it is correct even
-   while a flush is outstanding.
+   flight. Enforcement reads `known_total + in_flight + pending` (`_spent()`),
+   so it is correct even while a flush is outstanding.
 3. It fails permissive. Every failure mode - no config, old SDK, database down,
    unreadable price - logs once and continues untracked. Our own infrastructure
    having a bad day must never break someone else's run.
+
+`charge()` can only stop a free user after the work is done. An Actor that buys
+upstream work per call should also ask first: `affordable(event)` says how many
+more results the allowance can pay for, and `exhaust()` ends the run the same
+way a crossed cap does when that is too few to be worth the call.
 """
 
 from __future__ import annotations
@@ -56,6 +61,7 @@ class FreeTierGuard:
         self._charged_rows = 0        # events metered, quoted back in the notice row
         self._free_max = _ZERO
         self._known_total = _ZERO     # last authoritative total from the database
+        self._in_flight = _ZERO       # sent to the database, write not yet confirmed
         self._pending = _ZERO         # charged locally, not yet flushed
         self._prices: dict[str, Decimal] = {}
         self._db: UsageDB | None = None
@@ -171,7 +177,7 @@ class FreeTierGuard:
         self._known_total = spent
         Actor.log.info(messages.disclosure(spent, self._free_max))
 
-        if spent >= self._free_max:
+        if self._spent() >= self._free_max:
             self._blocked = True
             await self._announce_exhausted()
             await self._deactivate()
@@ -226,22 +232,26 @@ class FreeTierGuard:
 
         price = self._prices.get(event_name)
         if price is None:
-            if event_name not in self._warned_events:
-                self._warned_events.add(event_name)
-                Actor.log.warning(messages.unpriced_event(event_name, sorted(self._prices)))
+            self._warn_unpriced(event_name)
             return limit_reached
 
         self._pending += price * count
         self._charged_rows += count
         self._schedule_flush()
 
-        # `known_total + pending` is the whole reason the background flush is
-        # safe: the in-flight amount is still counted here.
-        if self._known_total + self._pending >= self._free_max:
+        # `_spent()` is the whole reason the background flush is safe: a write
+        # still in flight is counted here until the database confirms it.
+        if self._spent() >= self._free_max:
             await self._stop()
             return True
 
         return limit_reached
+
+    def _warn_unpriced(self, event_name: str) -> None:
+        """Once per event per run: an unpriced event is not counted, and we say so."""
+        if event_name not in self._warned_events:
+            self._warned_events.add(event_name)
+            Actor.log.warning(messages.unpriced_event(event_name, sorted(self._prices)))
 
     async def _platform_charge(self, event_name: str, count: int) -> bool:
         if not Actor.is_at_home() or count <= 0:
@@ -255,6 +265,92 @@ class FreeTierGuard:
             Actor.log.warning(f"Failed to charge '{event_name}' x{count}: {exc}")
             return False
 
+    # -------------------------------------------------------------- allowance
+
+    def _spent(self) -> Decimal:
+        """This month's spend as far as this run knows. Every FREE_MAX comparison uses it.
+
+        The last total the ledger confirmed, plus the write still in flight, plus
+        what has been metered but not yet sent. Leaving out the in-flight term
+        (as v0.1.8 did) undercounts by a whole flush for as long as the write
+        takes, which is exactly when the next charge is being judged.
+        """
+        return self._known_total + self._in_flight + self._pending
+
+    @property
+    def remaining_usd(self) -> Decimal | None:
+        """Dollars of free allowance this user has left, or None when no free limit applies.
+
+        None whenever the guard is not counting this run: a paying user, an Actor
+        without FREE_MAX, an off-platform run, or any of the permissive failure
+        paths (Supabase not configured or unreachable at start, no run identity,
+        an SDK that cannot report prices, no pay-per-event prices, the flush
+        circuit breaker). None means the free tier does not limit this run; any
+        paid budget is still the Actor's to enforce. Also None once `close()`
+        has run, unless the allowance ended the run.
+
+        Decimal(0) once the allowance has ended the run (`blocked` or
+        `exhausted`, including after `exhaust()`). Otherwise FREE_MAX minus
+        everything this run knows was spent, including charges whose ledger
+        write is still in flight, and never below 0.
+        """
+        if self._blocked or self._exhausted:
+            return _ZERO
+        if not self._active:
+            return None
+        return max(_ZERO, self._free_max - self._spent())
+
+    def affordable(self, event_name: str) -> int | None:
+        """How many more `event_name` events the free allowance can pay for, or None.
+
+        Ask before buying upstream work that only pays off if the user can
+        receive the results, such as a paid API call that returns a batch. The
+        answer is floor(remaining_usd / price) at the event's tier-resolved
+        price, so 0 means not even one more.
+
+        None means the free tier sets no limit here: the guard is not tracking
+        this run (see `remaining_usd`), or the event has no positive price. An
+        event missing from the price map is not counted against the allowance
+        either, and is warned about once, the same as when it is charged.
+
+        Synchronous, makes no network call, never raises.
+
+            n = guard.affordable("item_returned")
+            if n is not None and n < min(rows_per_call, rows_worth_buying):
+                await guard.exhaust()
+                return
+        """
+        remaining = self.remaining_usd
+        if remaining is None:
+            return None
+        price = self._prices.get(event_name)
+        if price is None:
+            self._warn_unpriced(event_name)
+            return None
+        if price <= 0:
+            return None
+        # `//` takes the exact integer part; floor(a / b) could round the
+        # quotient up across an integer and promise one result too many.
+        return int(remaining // price)
+
+    async def exhaust(self) -> None:
+        """End this free user's run now, exactly as if the allowance had just run out.
+
+        Call it when `affordable()` says the remaining allowance cannot pay for
+        enough results to justify the next upstream call. The guard settles the
+        ledger, logs and sets the same terminal status message, pushes the same
+        dataset notice row (unless FREE_TIER_NOTICE_ROW=0), and stops metering.
+        Afterwards `exhausted` is True and `remaining_usd` is 0. Then stop the
+        work and return, as you would when `charge()` returns True.
+
+        Does nothing (no database call, no message) when the guard is not
+        tracking: paying users and every inert path. It also does nothing once
+        the run is already exhausted, so calling it twice is safe. Never raises.
+        """
+        if not self._active or self._exhausted:
+            return
+        await self._stop()
+
     # ------------------------------------------------------------------ flush
 
     def _schedule_flush(self) -> None:
@@ -267,21 +363,32 @@ class FreeTierGuard:
         if self._db is None or self._pending <= 0:
             return
 
+        # The amount moves to `_in_flight`, never off the books: the write takes
+        # a network round trip, and a charge metered meanwhile must still see it.
         amount = min(self._pending, _MAX_FLUSH_AMOUNT)
         self._pending -= amount
+        self._in_flight += amount
+        landed = False
         try:
-            self._known_total = await self._db.increment_usage(
-                self._user_id, self._actor_id, amount
-            )
+            total = await self._db.increment_usage(self._user_id, self._actor_id, amount)
+            landed = True
+            self._known_total = total
             self._failures = 0
         except UsageDBError as exc:
-            # Put it back so the next flush retries it, rather than losing
-            # money we already let the user spend.
-            self._pending += amount
             self._failures += 1
             if self._failures >= _MAX_CONSECUTIVE_FAILURES:
                 Actor.log.warning(messages.tracking_unavailable(str(exc)))
                 await self._deactivate()
+        finally:
+            # The one place the amount leaves `_in_flight`, so it is counted
+            # exactly once however the write ended: landed (it is now inside
+            # `_known_total`), failed, or cancelled mid-write. If it did not
+            # land, put it back so the next flush retries it, rather than losing
+            # money we already let the user spend. Note the breaker above awaits
+            # while the amount is still in flight; it is re-added only here.
+            self._in_flight -= amount
+            if not landed:
+                self._pending += amount
 
     async def _drain(self) -> None:
         """Await the in-flight flush, then push whatever is left. Bounded.
@@ -303,8 +410,20 @@ class FreeTierGuard:
     # ------------------------------------------------------------------- stop
 
     async def _stop(self) -> None:
-        """The cap was reached mid-run. Settle up, tell the user, go quiet."""
-        await self._drain()
+        """The allowance ended this run mid-way. Settle up, tell the user, go quiet.
+
+        Reached from a charge that crosses the cap, or from `exhaust()`. Runs at
+        most once: `exhausted` flips before the first await, so a concurrent
+        charge crossing the cap at the same moment, or an `exhaust()` racing one,
+        returns here instead of pushing a second notice row.
+        """
+        if self._exhausted:
+            return
+        self._exhausted = True
+        try:
+            await self._drain()
+        except Exception:  # noqa: BLE001 - settling up must never stop us saying why
+            pass
         await self._announce_exhausted()
         await self._deactivate()
 
@@ -335,7 +454,7 @@ class FreeTierGuard:
         """
         if os.getenv("FREE_TIER_NOTICE_ROW") == "0":
             return
-        spent = self._known_total + self._pending
+        spent = self._spent()
         try:
             await Actor.push_data(messages.notice_row(
                 self._free_max, spent, _next_reset(), self._charged_rows or None,

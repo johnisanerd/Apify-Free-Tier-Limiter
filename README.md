@@ -24,7 +24,7 @@ run starts ──> paying user?  ──yes──> inert, zero overhead
                     │no
                     ▼
              charge loop: count locally, flush in background,
-                          stop the moment known + pending >= FREE_MAX
+                          stop the moment known + in flight + pending >= FREE_MAX
 ```
 
 ## Install
@@ -98,13 +98,59 @@ if billed and await guard.record("product", billed):
 billing. It is also more accurate than `charge()` here: it meters what the platform
 actually billed rather than what was requested.
 
+### Check the allowance before you buy upstream work
+
+`charge()` can only stop a free user after the work is paid for. That is fine when the
+work is cheap. It is not fine on an Actor that pays an upstream API per call: if the
+allowance covers 3 more results and the next call returns 20, the Actor has already
+bought 17 results the user will never receive.
+
+So ask before the call. Say the call can return up to `d` rows, and it is only worth
+buying if the user can receive at least `r` of them:
+
+```python
+EVENT = "item_returned"
+
+n = guard.affordable(EVENT)          # results the free allowance can still pay for
+if n is not None and n < min(d, r):
+    await guard.exhaust()            # stops the run exactly as a crossed cap would
+    return
+rows = await upstream.search(query, limit=d)     # now worth buying
+```
+
+`min(d, r)` matters on the last page: a call that can only return 2 rows is worth buying
+whenever the user can still receive both, even if `r` is 5. After the call, keep the
+charge loop as it is; `charge()` still stops the run at the cap.
+
+- **`guard.affordable(event)`** returns `int | None`: how many more `event` charges the
+  remaining allowance pays for, `floor(remaining_usd / price)` at the event's
+  tier-resolved price. `0` means not even one. **`None` means no free limit applies**: a
+  paying user, an Actor without `FREE_MAX`, any of the permissive failure paths below, or
+  an event the guard has no positive price for. Treat `None` as "go ahead".
+- **`guard.remaining_usd`** returns `Decimal | None`: the dollars behind that count. It
+  includes charges whose ledger write is still in flight, is `0` once the allowance has
+  ended the run, and is `None` on the same paths as `affordable()`.
+- **`await guard.exhaust()`** ends the run the way a crossed cap does. It settles the
+  ledger, logs and sets the terminal status, pushes the notice row, and stops metering;
+  afterwards `guard.exhausted` is `True`. It does nothing for a paying user or an inert
+  guard, and calling it twice is safe.
+
+Both checks are local arithmetic with no network call, so asking before every upstream
+call costs nothing.
+
+This covers the free allowance only. A paying user's own spending limit (the run's
+maximum total charge) is still the Actor's job, through the Apify SDK. The guard never
+reads it, so a paying run stays untouched.
+
 ### Guard state
 
 | Property | Meaning |
 | --- | --- |
 | `guard.blocked` | Already over the cap before any work began. Return immediately. |
-| `guard.exhausted` | The cap ended this run, at start *or* mid-run. Check before setting your own terminal status message. |
+| `guard.exhausted` | The cap ended this run, at start *or* mid-run, or `exhaust()` did. Check before setting your own terminal status message. |
 | `guard.tracking` | This run is actually being counted. Useful in logs and tests. |
+| `guard.remaining_usd` | Free allowance left in dollars, counting writes still in flight. `0` once the allowance has ended the run; `None` when no free limit applies. |
+| `guard.affordable(event)` | `floor(remaining_usd / price)` for that event. `None` when no free limit applies or the event has no price. |
 
 ## Configuration
 
@@ -153,6 +199,10 @@ Every failure path logs once and lets the run continue **untracked**:
 - `FREE_MAX` unset or unparseable, Supabase not configured
 - Apify SDK too old to report prices, or an Actor that is not on pay-per-event pricing
 - an event with no readable price (warned once, that event is not counted)
+
+On all of these but the last, `remaining_usd` and `affordable()` return `None` and
+`exhaust()` does nothing: no free limit is being enforced, so they never stop a run on
+our account. For an unpriced event only `affordable()` of that event returns `None`.
 
 The alternative — refusing to run when our own database is down — punishes users for our
 outage. The exposure is small and bounded: a free user, during an outage, on a

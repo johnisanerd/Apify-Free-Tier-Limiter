@@ -149,6 +149,10 @@ else:
 
 Leave the old `_charge` helper defined; nothing else has to change.
 
+If the Actor pays an upstream API per call, also check the allowance *before* each call
+so it never buys results a free user cannot receive: see "Check the allowance before you
+buy upstream work" in the [README](README.md) (`guard.affordable()` / `guard.exhaust()`).
+
 ## 3. Commit and push
 
 ```bash

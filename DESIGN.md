@@ -31,10 +31,13 @@ month, the Actor shuts itself down gracefully with an upgrade message.
 | 5 | Free vs paid check | Read `APIFY_USER_IS_PAYING`. No DB call, no off-platform table for v1. |
 | 6 | Monthly window | **Calendar month** via a `period` key (e.g. `"2026-08"`). Auto-resets, no cron. |
 | 7 | Enforcement cadence | Every charge round, not just at startup (a single run can otherwise overshoot). |
-| 8 | Hot path | **Never blocks.** Charges accumulate locally; at most one background flush in flight; enforcement reads `known_total + pending`. Per-item Actors charge hundreds of times per run, so a synchronous round trip per charge would add minutes. |
+| 8 | Hot path | **Never blocks.** Charges accumulate locally; at most one background flush in flight; enforcement reads `known_total + in_flight + pending` (see #12). Per-item Actors charge hundreds of times per run, so a synchronous round trip per charge would add minutes. |
 | 9 | Distribution | Pinned **release-tag tarball** via `[tool.uv.sources]` — reproducible, and needs no `git` binary in the Actor image. |
 | 10 | SDK floor | apify **≥3.0** (`get_charging_manager` + `get_pricing_info` landed in 3.0.0). Enforced at install *and* probed at runtime; too old → inert, never a crash. |
 | 11 | Pilot | ApifyApifyScraper. |
+| 12 | In-flight accounting | **A write in flight still counts.** A flush moves its amount from `pending` to `in_flight` before awaiting the ledger write, and one `finally` moves it out again: into `known_total` when the write lands, back to `pending` when it fails *or is cancelled*, so it is counted exactly once and never lost. Every comparison with `FREE_MAX` reads `known_total + in_flight + pending`. _(v0.1.9. v0.1.8 took the amount out of `pending` before the await, so for a whole round trip the guard undercounted by it, and a charge reaching the cap mid-write was let through.)_ |
+| 13 | Affordability scope | **Free side only.** `remaining_usd` and `affordable(event)` answer "how much more can this free user receive?" so an Actor can check before buying paid upstream work, not just stop after it. Both return `None` whenever no free limit applies (paying users and every permissive path), never `0`, so a paying run is never stopped by them. A paying user's own budget (the run's max total charge) stays the Actor's job via the Apify SDK; the guard does not read it. |
+| 14 | Explicit stop | **`exhaust()`** stops a free user through the same path as a crossed cap: drain the ledger, log, set the terminal status, push the notice row, deactivate. One stop path means the user always gets the same explanation and exactly one notice row, whichever check ended the run. Idempotent, and a no-op when the guard is not tracking. The stop path now runs at most once per run, so concurrent workers crossing the cap together no longer push duplicate notice rows. |
 
 ## Research findings (verified)
 
@@ -90,7 +93,9 @@ await guard.close()                      # settle the ledger
 2. **`get_usage(user, actor)`** — one read at start; period is server-side.
 3. **`increment_usage(user, actor, amount)`** — atomic RPC, returns the new total.
 4. **orchestrator** — accumulates locally, flushes in the background, enforces on
-   `known_total + pending` so the hot path never blocks.
+   `known_total + in_flight + pending` so the hot path never blocks.
+5. **affordability** — `affordable(event)` / `remaining_usd` before buying upstream
+   work, `exhaust()` to stop when the allowance cannot pay for enough of it.
 
 ## Supabase schema (live)
 

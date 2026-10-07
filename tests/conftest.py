@@ -7,6 +7,7 @@ matter - what the user sees in the log, and how many database calls we made.
 
 from __future__ import annotations
 
+import asyncio
 from decimal import Decimal
 
 import pytest
@@ -104,6 +105,31 @@ class FakeDB:
         self.closed = True
 
 
+class SuspendingDB(FakeDB):
+    """A FakeDB whose writes park until the test releases them.
+
+    FakeDB answers instantly, so with it a write is never actually in flight,
+    and the window where v0.1.8 dropped the in-flight amount from its books
+    could not be seen. Here `increment_usage` signals `entered`, then waits on
+    `release`; set `fail` before releasing to make the parked write fail. Once
+    `release` is set it stays set, so later writes go straight through.
+    """
+
+    def __init__(self, start_total: str = "0") -> None:
+        super().__init__(start_total)
+        self.entered = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def increment_usage(self, user_id: str, actor_id: str, amount: Decimal) -> Decimal:
+        self.increment_calls.append(amount)
+        self.entered.set()
+        await self.release.wait()
+        if self.fail:
+            raise UsageDBError("ConnectError")
+        self.total += amount
+        return self.total
+
+
 @pytest.fixture
 def actor(monkeypatch):
     fake = FakeActor(prices={"item_returned": "0.01"})
@@ -114,6 +140,14 @@ def actor(monkeypatch):
 @pytest.fixture
 def db(monkeypatch):
     fake = FakeDB()
+    monkeypatch.setattr(guard_module, "UsageDB", lambda url, key: fake)
+    return fake
+
+
+@pytest.fixture
+def slow_db(monkeypatch):
+    """A SuspendingDB in place of FakeDB. Use instead of `db`, never with it."""
+    fake = SuspendingDB()
     monkeypatch.setattr(guard_module, "UsageDB", lambda url, key: fake)
     return fake
 

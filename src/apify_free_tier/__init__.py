@@ -13,6 +13,10 @@
         finally:
             await guard.close()
 
+Actors that buy upstream work per call can ask first: `guard.affordable(event)`
+is how many more results the free allowance pays for (None when no free limit
+applies), and `await guard.exhaust()` stops the run when that is too few.
+
 Paying Apify users are never limited, never counted, and never slowed down.
 """
 
