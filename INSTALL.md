@@ -65,7 +65,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.9.tar.gz" }
+apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.10.tar.gz" }
 ```
 
 Then re-lock:
@@ -152,6 +152,22 @@ Leave the old `_charge` helper defined; nothing else has to change.
 If the Actor pays an upstream API per call, also check the allowance *before* each call
 so it never buys results a free user cannot receive: see "Check the allowance before you
 buy upstream work" in the [README](README.md) (`guard.affordable()` / `guard.exhaust()`).
+
+### 2a. If the vendor bills per call and the Actor charges per row
+
+Check the Actor's unit economics before you pick `FREE_MAX`. If one upstream call costs
+money whatever it returns (SerpApi: $0.00725 per search) and the Actor charges per
+result row, an empty or trimmed call meters almost nothing. Add one line after each
+vendor-billed call, once that call's rows are charged (v0.1.10+):
+
+```python
+if await guard.record_cost(Decimal("0.00725")):
+    stats["limit_reached"] = True
+```
+
+It meters only the shortfall between the call's cost and what its rows already metered,
+so well-priced calls are unaffected. Do not call it for a call the vendor did not bill.
+The README section "Count what the call cost" has the full pattern.
 
 ## 3. Commit and push
 

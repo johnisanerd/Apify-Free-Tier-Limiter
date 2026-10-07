@@ -300,6 +300,188 @@ async def test_free_max_tolerates_sloppy_input(actor, db, free_env, monkeypatch,
     assert guard._free_max == Decimal(expected)
 
 
+# --------------------- promise 6: the cap tracks what a free user costs the owner
+#
+# The default fixture prices item_returned at $0.01 with a $0.05 cap. These use
+# a $0.02 call cost, so one empty call is worth two rows of metering.
+
+CALL_COST = Decimal("0.02")
+
+
+async def test_an_empty_upstream_call_meters_its_full_cost(actor, db, free_env):
+    """The vendor bills a call that returned nothing. Before 0.1.9 it metered $0."""
+    guard = await FreeTierGuard.start()
+
+    stop = await guard.record_cost(CALL_COST)
+    await guard.close()
+
+    assert stop is False
+    assert db.total == CALL_COST
+    assert actor.charges == []          # metering only, never a platform charge
+
+
+async def test_a_thin_call_meters_its_cost_not_price_plus_cost(actor, db, free_env):
+    guard = await FreeTierGuard.start()
+
+    await guard.charge("item_returned", 1)       # $0.01 of rows
+    await guard.record_cost(CALL_COST)           # tops the call up to $0.02
+    await guard.close()
+
+    assert db.total == Decimal("0.02")
+
+
+async def test_a_call_whose_rows_cover_it_adds_nothing(actor, db, free_env):
+    """Well-priced calls must not tighten anyone's existing allowance."""
+    guard = await FreeTierGuard.start()
+
+    await guard.charge("item_returned", 3)       # $0.03 >= $0.02
+    await guard.record_cost(CALL_COST)
+    await guard.close()
+
+    assert db.total == Decimal("0.03")
+
+
+async def test_the_shortfall_resets_per_call(actor, db, free_env):
+    """Rows from an earlier call cannot pay for a later empty one."""
+    guard = await FreeTierGuard.start()
+
+    await guard.charge("item_returned", 3)       # call 1: $0.03, covered
+    await guard.record_cost(CALL_COST)
+    await guard.record_cost(Decimal("0.01"))     # call 2: empty, full cost
+    await guard.close()
+
+    assert db.total == Decimal("0.04")
+
+
+async def test_recorded_rows_count_toward_the_call(actor, db, free_env):
+    guard = await FreeTierGuard.start()
+
+    await guard.record("item_returned", 1)
+    await guard.record_cost(CALL_COST)
+    await guard.close()
+
+    assert db.total == Decimal("0.02")
+    assert actor.charges == []
+
+
+async def test_repeated_empty_calls_hit_the_cap(actor, db, free_env):
+    guard = await FreeTierGuard.start()
+
+    results = [await guard.record_cost(CALL_COST) for _ in range(4)]
+
+    assert results == [False, False, True, False]   # $0.06 crosses $0.05; then inert
+    assert guard.exhausted is True
+    notice = [row for row in actor.pushed if row.get("free_tier_notice")]
+    assert len(notice) == 1
+    # Cost metering hands the user no results, so it must not claim it did.
+    assert "returned no results" in notice[0]["message"]
+
+
+async def test_record_cost_is_a_no_op_for_a_paying_user(actor, db, free_env, monkeypatch):
+    monkeypatch.setenv("APIFY_USER_IS_PAYING", "1")
+
+    guard = await FreeTierGuard.start()
+    stop = await guard.record_cost(CALL_COST)
+
+    assert stop is False
+    assert db.get_calls == 0
+    assert db.increment_calls == []
+
+
+async def test_record_cost_is_a_no_op_when_not_opted_in(actor, db, free_env, monkeypatch):
+    monkeypatch.delenv("FREE_MAX")
+
+    guard = await FreeTierGuard.start()
+
+    assert await guard.record_cost(CALL_COST) is False
+    assert db.increment_calls == []
+    assert actor.log.warnings == []
+
+
+async def test_record_cost_is_a_no_op_off_platform(actor, db, free_env):
+    actor._at_home = False
+
+    guard = await FreeTierGuard.start()
+
+    assert await guard.record_cost(CALL_COST) is False
+    assert db.increment_calls == []
+
+
+@pytest.mark.parametrize("bad", [None, "-0.01", "NaN", "Infinity", "lots", -1])
+async def test_an_unreadable_cost_warns_once_and_keeps_tracking(actor, db, free_env, bad):
+    guard = await FreeTierGuard.start()
+
+    assert await guard.record_cost(bad) is False
+    assert await guard.record_cost(bad) is False
+
+    warnings = [w for w in actor.log.warnings if "unreadable upstream cost" in w]
+    assert len(warnings) == 1
+    assert guard.tracking is True
+    assert db.increment_calls == []
+
+
+@pytest.mark.parametrize("raw", [0.02, "0.02", "$0.02", 1])
+async def test_record_cost_accepts_numbers_and_strings(actor, db, free_env, raw):
+    guard = await FreeTierGuard.start()
+
+    await guard.record_cost(raw)
+    await guard.close()
+
+    assert db.total == min(Decimal(str(raw).lstrip("$")), Decimal("1"))
+
+
+async def test_cost_in_flight_still_counts_toward_the_cap(actor, db, free_env):
+    guard = await FreeTierGuard.start()
+
+    await guard.record_cost(CALL_COST)
+    await guard.record_cost(CALL_COST)
+    assert guard._known_total + guard._pending == Decimal("0.04")
+
+    assert await guard.charge("item_returned", 1) is True
+
+
+async def test_a_top_up_does_not_inflate_the_delivered_count(actor, db, free_env):
+    """A minimum-charge top-up bills events for rows that do not exist."""
+    guard = await FreeTierGuard.start()
+
+    await guard.charge("item_returned", 1)                 # one real row
+    await guard.charge("item_returned", 4, delivered=0)    # top-up crosses the cap
+
+    notice = [row for row in actor.pushed if row.get("free_tier_notice")]
+    assert len(notice) == 1
+    assert "returned 1 result(s)" in notice[0]["message"]
+
+
+async def test_lens_geon_incident(actor, db, free_env, monkeypatch):
+    """Regression for google-lens-api, September 2026.
+
+    One free account sent ~1,831 exact_matches lookups at $0.00725 each. About
+    two thirds came back empty and the rest returned one or two rows at the FREE
+    price of $0.0004, so the guard metered $0.52 against a $1.00 cap and never
+    stopped it: ~$13 of vendor cost. With record_cost the same traffic has to
+    stop at the cap, within about $1.00 / $0.00725 = 138 lookups.
+    """
+    monkeypatch.setenv("FREE_MAX", "1.00")
+    actor._pricing.per_event_prices = {"exact_match_returned": Decimal("0.0004")}
+    guard = await FreeTierGuard.start()
+
+    lookups = 0
+    stopped = False
+    for i in range(1831):
+        lookups += 1
+        rows = (0, 0, 2)[i % 3]
+        if rows and await guard.charge("exact_match_returned", rows):
+            stopped = True
+            break
+        if await guard.record_cost(Decimal("0.00725")):
+            stopped = True
+            break
+
+    assert stopped is True
+    assert lookups <= 138
+    assert guard.exhausted is True
+
+
 # ------------------------------------------- promise 5: the user is told why
 
 async def test_the_reason_reaches_the_dataset_not_just_the_log(actor, db, free_env):
@@ -849,3 +1031,20 @@ async def test_a_surprise_error_while_settling_up_still_ends_the_run(actor, db, 
     assert guard.exhausted is True
     assert guard.tracking is False
     assert len([row for row in actor.pushed if row.get("free_tier_notice")]) == 1
+
+
+async def test_record_cost_counts_a_write_already_in_flight(actor, slow_db, free_env):
+    """Cost metering reads the same `_spent()` as charges (#12): with $0.03 parked
+    mid-write, a $0.02 empty call reaches the $0.05 cap instead of looking free."""
+    guard = await FreeTierGuard.start()
+    await guard.charge("item_returned", 3)
+    await guard.record_cost(Decimal("0.01"))      # covered by the rows: adds nothing
+    await slow_db.entered.wait()                  # 0.03 parked in flight
+
+    assert guard.remaining_usd == Decimal("0.02")
+    asyncio.get_running_loop().call_later(0.01, slow_db.release.set)
+    assert await guard.record_cost(Decimal("0.02")) is True
+
+    assert guard.exhausted is True
+    assert guard.remaining_usd == Decimal("0")
+    assert slow_db.total == Decimal("0.05")

@@ -128,6 +128,14 @@ def no_prices() -> str:
     )
 
 
+def invalid_cost(value: object) -> str:
+    """record_cost() got something that is not a non-negative dollar amount."""
+    return (
+        f"Ignoring an unreadable upstream cost ({value!r}); "
+        "that call is metered at its event prices only."
+    )
+
+
 def unpriced_event(event_name: str, known: list[str]) -> str:
     return (
         f"No readable price for the '{event_name}' event "

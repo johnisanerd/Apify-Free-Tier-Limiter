@@ -21,6 +21,30 @@ That scan is the source of truth — it reads the live Actor configuration rathe
 this file, and it exits non-zero if it finds a secret `FREE_MAX`, missing Supabase
 variables, or a test flag left switched on.
 
+## Cost metering (`record_cost`, v0.1.10)
+
+An audit on 2026-10-06 (SerpApi archive 2026-09-03 to 2026-10-06) looked for Actors
+whose vendor bills per call while the Actor charges per row or skips charging empty
+calls. On those, the cap meters less than a free user costs. See the README section
+"Count what the call cost".
+
+| Actor | SerpApi in window | Empty calls | Status |
+| --- | --- | --- | --- |
+| `johnvc/google-lens-api` | $57.83 | 30% (exact 49%) | **Wired in Actor 1.1.0** together with a per-image billing minimum |
+| `johnvc/Google-Jobs-Scraper` | $208 (engine shared with the pay-per-result Actor) | 41% | Queued: the call happens in `googlejobs.py:602`, needs a call-count hook |
+| `johnvc/google-jobs-scraper---pay-per-result` | (shared) | 45% | Queued: all pages fetched before metering (`googlejobs.py:295`) |
+| `johnvc/Google-Flights-Data-Scraper-Flight-and-Price-Search` | $136.40 | 29% | Queued: an empty search meters only `setup` |
+| `johnvc/walmart-api` | $14.23 | 13% | Queued: page fetches inside generators |
+| `johnvc/google-maps-contributor-reviews-api` | $12.23 | 13% | Queued: easy, one call per contributor |
+| `johnvc/tripadvisor-api` | $9.54 | 0% | Queued: trimming below 13 rows under-meters |
+| `johnvc/google-local-services-api` | $6.41 | 3% | Queued: easy |
+| `johnvc/yandex-reverse-image-search` | $1.77 | 23% | Queued: easy, empty lookups meter $0 |
+| `johnvc/apple-maps-api`, `johnvc/google-images-api` (Serper), `johnvc/google-play-api` | under $1 each | - | Low priority |
+
+The other 29 SerpApi Actors charge per call, per page, or a setup fee that covers an
+empty call, so the shortfall is already zero. **The queue is on hold** until
+google-lens-api has run on v0.1.10 for a day and the ledger matches the lookups.
+
 ## Enabled (47 of 104 Actors, as of 2026-09-08)
 
 | Actor | Actor ID | FREE_MAX | Library | Status |

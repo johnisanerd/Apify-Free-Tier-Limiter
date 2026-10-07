@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.9.tar.gz" }
+apify-free-tier = { url = "https://github.com/johnisanerd/Apify-Free-Tier-Limiter/archive/refs/tags/v0.1.10.tar.gz" }
 ```
 
 Then re-lock so the Docker build picks it up:
@@ -141,6 +141,39 @@ call costs nothing.
 This covers the free allowance only. A paying user's own spending limit (the run's
 maximum total charge) is still the Actor's job, through the Apify SDK. The guard never
 reads it, so a paying run stays untouched.
+
+### Count what the call cost, not just what its rows were worth: `record_cost()`
+
+`affordable()` decides whether to buy the next call. `record_cost()` (v0.1.10) makes sure
+the call is counted at what it cost once it is bought. Both are needed when the vendor
+bills per call while the Actor charges per row: the guard meters what a free user would
+have paid (event price × count), so a call that comes back empty meters $0 and a call
+trimmed to one row meters a fraction of its cost. On google-lens-api one free account
+made ~1,831 lookups (~$13 of vendor cost) and was metered $0.52 against a $1.00 cap, so it
+was never stopped.
+
+Call `record_cost()` once per vendor-billed call, **after** charging that call's rows:
+
+```python
+rows = client.search(query)                  # the vendor bills this call
+for row in rows:
+    await Actor.push_data(row)
+    if await guard.charge("result_returned", 1):
+        stop = True
+        break
+if await guard.record_cost(Decimal("0.00725")):
+    stop = True                              # free allowance exhausted
+```
+
+It meters only the **shortfall**: the cost minus the price already metered since the
+previous `record_cost()`. A call whose rows cover its cost adds nothing, so existing
+allowances do not tighten. An empty call counts at its full cost. It never charges the
+platform, never raises, and does nothing for paying users. Skip it for a call the vendor
+did not bill (an HTTP failure, say).
+
+If the Actor bills a per-search minimum by charging extra events for rows that do not
+exist, pass `delivered=0` on that top-up charge (`guard.charge(event, k, delivered=0)`).
+The notice row then reports the results the user actually received.
 
 ### Guard state
 

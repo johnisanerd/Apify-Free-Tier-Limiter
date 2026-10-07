@@ -24,6 +24,16 @@ Three properties matter more than the feature itself:
 upstream work per call should also ask first: `affordable(event)` says how many
 more results the allowance can pay for, and `exhaust()` ends the run the same
 way a crossed cap does when that is too few to be worth the call.
+
+What gets metered
+-----------------
+By default the guard meters what a free user *would have paid*: event price x
+count. That stands in for what they cost the owner only when every upstream call
+is priced to cover itself. When the vendor bills per call and the Actor prices
+per row, an empty or heavily trimmed call meters almost nothing while costing the
+full call. `record_cost()` closes that gap: called once per vendor-billed call,
+it meters the call's cost minus whatever its rows already metered, so a
+well-priced call adds nothing and an empty one counts at its real cost.
 """
 
 from __future__ import annotations
@@ -63,6 +73,7 @@ class FreeTierGuard:
         self._known_total = _ZERO     # last authoritative total from the database
         self._in_flight = _ZERO       # sent to the database, write not yet confirmed
         self._pending = _ZERO         # charged locally, not yet flushed
+        self._metered_since_cost = _ZERO  # price metered since the last record_cost()
         self._prices: dict[str, Decimal] = {}
         self._db: UsageDB | None = None
         self._user_id = ""
@@ -70,6 +81,7 @@ class FreeTierGuard:
         self._flush_task: asyncio.Task[None] | None = None
         self._failures = 0
         self._warned_events: set[str] = set()
+        self._warned_cost = False
 
     # ------------------------------------------------------------------ start
 
@@ -199,16 +211,25 @@ class FreeTierGuard:
 
     # ----------------------------------------------------------------- charge
 
-    async def charge(self, event_name: str, count: int = 1) -> bool:
+    async def charge(
+        self, event_name: str, count: int = 1, *, delivered: int | None = None
+    ) -> bool:
         """Charge an event. Returns True when the caller should stop.
 
         Same contract as the local `_charge` helper this replaces: the
         `is_at_home()` gate lives in here, and it never raises.
+
+        `delivered` is how many of these events were actual results handed to
+        the user, when that differs from `count`. A minimum-charge top-up bills
+        events for rows that do not exist; pass `delivered=0` so the notice row
+        does not tell the user they received them.
         """
         limit_reached = await self._platform_charge(event_name, count)
-        return await self._meter(event_name, count, limit_reached)
+        return await self._meter(event_name, count, limit_reached, delivered)
 
-    async def record(self, event_name: str, count: int = 1) -> bool:
+    async def record(
+        self, event_name: str, count: int = 1, *, delivered: int | None = None
+    ) -> bool:
         """Meter a charge the Actor already performed itself. Never charges.
 
         Some Actors have to call `Actor.charge` directly because they need its
@@ -223,9 +244,46 @@ class FreeTierGuard:
 
         Returns True when the free allowance is now exhausted.
         """
-        return await self._meter(event_name, count, False)
+        return await self._meter(event_name, count, False, delivered)
 
-    async def _meter(self, event_name: str, count: int, limit_reached: bool) -> bool:
+    async def record_cost(self, usd: Decimal | float | int | str) -> bool:
+        """Meter one vendor-billed upstream call at no less than what it cost.
+
+        For Actors whose vendor bills per call while the Actor prices per row.
+        Call it once per call the vendor bills, after charging (or recording)
+        that call's rows. It meters only the shortfall: `usd` minus the price
+        already metered since the previous `record_cost()`. A call whose rows
+        covered its cost adds nothing; an empty call adds the full cost.
+
+            rows = client.search(query)          # the vendor bills this call
+            for row in rows:
+                if await guard.charge("result", 1):
+                    break
+            if await guard.record_cost(Decimal("0.00725")):
+                stop = True
+
+        Never charges the platform and never raises. Returns True when the free
+        allowance is now exhausted. A no-op for paying users and whenever the
+        guard is not tracking.
+        """
+        if not self._active:
+            return False
+        cost = _decimal_or_none(str(usd)) if usd is not None else None
+        if cost is None or not cost.is_finite() or cost < 0:
+            if not self._warned_cost:
+                self._warned_cost = True
+                Actor.log.warning(messages.invalid_cost(usd))
+            return False
+
+        shortfall = cost - self._metered_since_cost
+        self._metered_since_cost = _ZERO
+        if shortfall <= 0:
+            return False
+        return await self._add_spend(shortfall)
+
+    async def _meter(
+        self, event_name: str, count: int, limit_reached: bool, delivered: int | None = None
+    ) -> bool:
         """Free-tier accounting for `count` events, independent of who charged."""
         if not self._active or count <= 0:
             return limit_reached
@@ -235,8 +293,16 @@ class FreeTierGuard:
             self._warn_unpriced(event_name)
             return limit_reached
 
-        self._pending += price * count
-        self._charged_rows += count
+        amount = price * count
+        self._metered_since_cost += amount
+        self._charged_rows += count if delivered is None else max(0, delivered)
+        if await self._add_spend(amount):
+            return True
+        return limit_reached
+
+    async def _add_spend(self, amount: Decimal) -> bool:
+        """Add `amount` to the free user's tab. Returns True once the cap is reached."""
+        self._pending += amount
         self._schedule_flush()
 
         # `_spent()` is the whole reason the background flush is safe: a write
@@ -244,8 +310,7 @@ class FreeTierGuard:
         if self._spent() >= self._free_max:
             await self._stop()
             return True
-
-        return limit_reached
+        return False
 
     def _warn_unpriced(self, event_name: str) -> None:
         """Once per event per run: an unpriced event is not counted, and we say so."""
